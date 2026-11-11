@@ -128,6 +128,9 @@ object Prefs {
     // quest fork (R8)
     val CRT_ENABLED = bool("crt_enabled", false)
     val CRT_INTENSITY = int("crt_intensity", 50, 0..100)
+    // quest fork (S4): Pokémon battle helper, off by default; game profile id from assets/pokemon/profiles.json
+    val POKEMON_HELPER = bool("pokemon_helper", false)
+    val POKEMON_PROFILE = str("pokemon_profile", "frlg")
     // quest fork (R10): theater screen; sizes in cm, curve 0 = flat .. 100 = wrapped around the viewer
     val THEATER_HEIGHT = int("theater_screen_height_cm", 200, 50..1000)
     val THEATER_DISTANCE = int("theater_distance_cm", 350, 100..2000)

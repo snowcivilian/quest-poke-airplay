@@ -1,0 +1,19 @@
+{
+  "_comment": [
+    "Pokémon battle helper game profiles (S4). Data, not code.",
+    "system: which presets show this profile (gba, ds). defaultGen: gen3 | gen4 | gen5 | latest; the user's",
+    "choice is saved per profile. layout: screen regions as fractions of the cropped game frame (HP boxes,",
+    "name fields, battle text box, move slots, opponent sprite area); filled in when each game is tuned."
+  ],
+  "version": 1,
+  "profiles": [
+    { "id": "frlg",          "label": "FireRed / LeafGreen",        "system": "gba", "defaultGen": "gen3", "layout": null },
+    { "id": "rse",           "label": "Ruby / Sapphire / Emerald",  "system": "gba", "defaultGen": "gen3", "layout": null },
+    { "id": "frlg_hack",     "label": "FireRed-based hack",         "system": "gba", "defaultGen": "gen3", "layout": null },
+    { "id": "emerald_hack",  "label": "Emerald-based hack",         "system": "gba", "defaultGen": "gen3", "layout": null },
+    { "id": "dppt",          "label": "Diamond / Pearl / Platinum", "system": "ds",  "defaultGen": "gen4", "layout": null },
+    { "id": "hgss",          "label": "HeartGold / SoulSilver",     "system": "ds",  "defaultGen": "gen4", "layout": null },
+    { "id": "bw",            "label": "Black / White",              "system": "ds",  "defaultGen": "gen5", "layout": null },
+    { "id": "b2w2",          "label": "Black 2 / White 2",          "system": "ds",  "defaultGen": "gen5", "layout": null }
+  ]
+}
