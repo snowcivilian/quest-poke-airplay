@@ -125,4 +125,7 @@ object Prefs {
     // quest fork (R6, R7)
     val AUTO_DETECT = bool("auto_detect", true)
     val GAME_MODE = bool("game_mode", true)
+    // quest fork (R8)
+    val CRT_ENABLED = bool("crt_enabled", false)
+    val CRT_INTENSITY = int("crt_intensity", 50, 0..100)
 }

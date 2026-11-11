@@ -52,6 +52,8 @@ object VideoController {
     @Volatile var lastDetectedAspect = 0f; private set
     @Volatile var lastMatch: String? = null; private set
 
+    @Volatile private var scanIntensity = 0f
+
     @Volatile private var frameW = 0
     @Volatile private var frameH = 0
     @Volatile private var config = RenderConfig(NormRect.FULL, 16f / 9f)
@@ -77,7 +79,15 @@ object VideoController {
                 } else setActive(byId(id))
             }
         }
+        scope.launch {
+            prefs.observe { if (this[Prefs.CRT_ENABLED]) this[Prefs.CRT_INTENSITY] / 100f else 0f }.collect {
+                synchronized(this@VideoController) { scanIntensity = it; _recompute() }
+            }
+        }
     }
+
+    /** Scanline lines when the preset has no native height (full frame). */
+    private const val DEFAULT_LINES = 240
 
     fun byId(id: String): Preset = presets.firstOrNull { it.id == id } ?: presets.first()
 
@@ -126,7 +136,8 @@ object VideoController {
         val fw = frameW; val fh = frameH
         val crop = if (fw > 0 && fh > 0) p.cropFor(fw, fh) else NormRect.FULL
         val aspect = if (fw > 0 && fh > 0) p.outputAspect(crop, fw, fh) else (p.displayAspect ?: 16f / 9f)
-        config = RenderConfig(crop, aspect, detect = _auto.value)
+        val lines = if (p.nativeH > 0) p.nativeH else DEFAULT_LINES
+        config = RenderConfig(crop, aspect, scanIntensity, lines, detect = _auto.value)
         _displayAspect.value = aspect
     }
 }

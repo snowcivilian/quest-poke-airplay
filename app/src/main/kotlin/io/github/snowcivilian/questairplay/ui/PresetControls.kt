@@ -2,6 +2,12 @@ package io.github.snowcivilian.questairplay.ui
 
 import android.content.Context
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.width
+import androidx.compose.material3.Slider
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.text.style.TextAlign
+import kotlin.math.roundToInt
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -73,6 +79,13 @@ internal fun QuickMenuExtras(viewModel: MainViewModel, close: () -> Unit) {
         leadingIcon = { if (auto) Icon(Icons.Default.Check, null) },
         onClick = { VideoController.setAuto(ctx.prefs(), !auto); close() },
     )
+    val crt by viewModel.pref(Prefs.CRT_ENABLED).collectAsState()
+    DropdownMenuItem(
+        modifier = Modifier.heightIn(min = 48.dp),
+        text = { Text("CRT scanlines") },
+        leadingIcon = { if (crt) Icon(Icons.Default.Check, null) },
+        onClick = { viewModel.set(Prefs.CRT_ENABLED, !crt); close() },
+    )
     HorizontalDivider()
 }
 
@@ -92,6 +105,16 @@ fun DisplaySettings(viewModel: MainViewModel) {
         auto) { VideoController.setAuto(ctx.prefs(), it) }
     SettingToggle("Resize panel to fit the game", "Reopens the panel at the system's shape when the preset changes",
         panelResize) { viewModel.set(Prefs.PANEL_RESIZE, it) }
+    val crt by viewModel.pref(Prefs.CRT_ENABLED).collectAsState()
+    val crtIntensity by viewModel.pref(Prefs.CRT_INTENSITY).collectAsState()
+    SettingToggle("CRT scanlines", "Dark lines between the game's rows, like an old TV",
+        crt) { viewModel.set(Prefs.CRT_ENABLED, it) }
+    if (crt) Row(Modifier.padding(horizontal = 16.dp).heightIn(min = 48.dp), verticalAlignment = Alignment.CenterVertically) {
+        Text("Intensity", Modifier.width(88.dp))
+        Slider(value = crtIntensity / 100f, onValueChange = { viewModel.set(Prefs.CRT_INTENSITY, (it * 100).roundToInt()) },
+            modifier = Modifier.weight(1f))
+        Text("$crtIntensity%", Modifier.width(52.dp), textAlign = TextAlign.End)
+    }
     SettingToggle("Show stats overlay", "FPS, bitrate, decode-to-display delay, audio buffer and detected system",
         stats) { viewModel.set(Prefs.DEBUG_ENABLED, it) }
     SectionTitle(if (auto) "System preset (auto: ${active.label})" else "System preset")
