@@ -12,6 +12,7 @@ import androidx.compose.material.icons.filled.AspectRatio
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
@@ -41,6 +42,7 @@ private fun Context.prefs() = getSharedPreferences(Prefs.NAME, Context.MODE_PRIV
 fun PresetMenuButton(viewModel: MainViewModel, tint: Color = Color.Unspecified) {
     val ctx = LocalContext.current
     val active by VideoController.active.collectAsState()
+    val autoOn by VideoController.auto.collectAsState()
     var open by remember { mutableStateOf(false) }
     Box {
         IconButton(onClick = { open = true }, modifier = Modifier.size(48.dp)) {
@@ -52,7 +54,7 @@ fun PresetMenuButton(viewModel: MainViewModel, tint: Color = Color.Unspecified) 
                 DropdownMenuItem(
                     modifier = Modifier.heightIn(min = 48.dp),
                     text = { Text(p.label) },
-                    leadingIcon = { if (p.id == active.id) Icon(Icons.Default.Check, null) },
+                    leadingIcon = { if (!autoOn && p.id == active.id) Icon(Icons.Default.Check, null) },
                     onClick = { VideoController.select(ctx.prefs(), p.id); open = false },
                 )
             }
@@ -60,9 +62,19 @@ fun PresetMenuButton(viewModel: MainViewModel, tint: Color = Color.Unspecified) 
     }
 }
 
-/** Hook for items added above the preset list in later milestones. */
+/** Items above the preset list in the quick menu. */
 @Composable
-internal fun QuickMenuExtras(viewModel: MainViewModel, close: () -> Unit) {}
+internal fun QuickMenuExtras(viewModel: MainViewModel, close: () -> Unit) {
+    val ctx = LocalContext.current
+    val auto by VideoController.auto.collectAsState()
+    DropdownMenuItem(
+        modifier = Modifier.heightIn(min = 48.dp),
+        text = { Text("Auto-detect system") },
+        leadingIcon = { if (auto) Icon(Icons.Default.Check, null) },
+        onClick = { VideoController.setAuto(ctx.prefs(), !auto); close() },
+    )
+    HorizontalDivider()
+}
 
 /** Display section of the settings screen. */
 @Composable
@@ -70,19 +82,28 @@ fun DisplaySettings(viewModel: MainViewModel) {
     val ctx = LocalContext.current
     val active by VideoController.active.collectAsState()
     val panelResize by viewModel.pref(Prefs.PANEL_RESIZE).collectAsState()
+    val auto by VideoController.auto.collectAsState()
+    val gameMode by viewModel.pref(Prefs.GAME_MODE).collectAsState()
+    val stats by viewModel.pref(Prefs.DEBUG_ENABLED).collectAsState()
     SectionTitle("Display")
+    SettingToggle("Game mode", "Lowest delay. Turn off for watching video (smoother, more delay). Reconnects the stream.",
+        gameMode) { viewModel.set(Prefs.GAME_MODE, it) }
+    SettingToggle("Auto-detect system", "Measure the black bars and pick the matching preset. Picking a preset by hand turns this off.",
+        auto) { VideoController.setAuto(ctx.prefs(), it) }
     SettingToggle("Resize panel to fit the game", "Reopens the panel at the system's shape when the preset changes",
         panelResize) { viewModel.set(Prefs.PANEL_RESIZE, it) }
-    SectionTitle("System preset")
+    SettingToggle("Show stats overlay", "FPS, bitrate, decode-to-display delay, audio buffer and detected system",
+        stats) { viewModel.set(Prefs.DEBUG_ENABLED, it) }
+    SectionTitle(if (auto) "System preset (auto: ${active.label})" else "System preset")
     VideoController.presets.forEach { p ->
         ListItem(
             modifier = Modifier
                 .heightIn(min = 48.dp)
-                .selectable(selected = p.id == active.id, role = Role.RadioButton) {
+                .selectable(selected = !auto && p.id == active.id, role = Role.RadioButton) {
                     VideoController.select(ctx.prefs(), p.id)
                 },
             headlineContent = { Text(p.label) },
-            leadingContent = { RadioButton(selected = p.id == active.id, onClick = null) },
+            leadingContent = { RadioButton(selected = !auto && p.id == active.id, onClick = null) },
         )
     }
 }

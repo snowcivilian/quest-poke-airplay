@@ -148,6 +148,7 @@ dependencies {
     debugImplementation(libs.compose.ui.tooling)
 
     testImplementation("junit:junit:4.13.2") // quest fork: unit tests for pure logic
+    testImplementation("org.json:json:20250517") // real org.json for JVM tests (android.jar's is a stub)
 
     implementation(libs.hilt.android)
     ksp(libs.hilt.compiler)

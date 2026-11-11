@@ -122,4 +122,7 @@ object Prefs {
     // quest fork (R5): system preset id from assets/presets.json; panel relaunches at the preset's aspect
     val PRESET = str("preset", "full")
     val PANEL_RESIZE = bool("panel_resize", true)
+    // quest fork (R6, R7)
+    val AUTO_DETECT = bool("auto_detect", true)
+    val GAME_MODE = bool("game_mode", true)
 }

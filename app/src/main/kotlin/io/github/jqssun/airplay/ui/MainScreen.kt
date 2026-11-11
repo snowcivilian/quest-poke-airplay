@@ -1119,6 +1119,7 @@ private fun debugOverlaySections(context: Context, info: DebugInfo): List<DebugS
     }.takeIf { it.isNotEmpty() }?.let { add(DebugSection(context.getString(R.string.debug_section_audio), it)) }
 
     add(DebugSection(context.getString(R.string.debug_section_network), listOf(context.getString(R.string.debug_clients, info.connections))))
+    add(DebugSection("Quest", io.github.snowcivilian.questairplay.video.QuestDebug.lines())) // quest fork (R9)
 }
 
 // "mean/max ms held=N", or "held=N" before first latency window lands

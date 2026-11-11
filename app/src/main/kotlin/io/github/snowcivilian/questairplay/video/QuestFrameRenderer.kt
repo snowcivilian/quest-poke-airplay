@@ -20,6 +20,13 @@ class QuestFrameRenderer {
     private var uCrop = 0
     private var uScan = 0
     private var uLines = 0
+    private var fbo = 0
+    private var fboTex = 0
+    private val readBuf = ByteBuffer.allocateDirect(DW * DH * 4).order(ByteOrder.nativeOrder())
+    private val readBytes = ByteArray(DW * DH * 4)
+    private var lastDetectNs = 0L
+    private var lastFrameW = 0
+    private var lastFrameH = 0
 
     fun init() {
         program = _program(VERT, FRAG)
@@ -29,11 +36,47 @@ class QuestFrameRenderer {
         uCrop = GLES20.glGetUniformLocation(program, "uCrop")
         uScan = GLES20.glGetUniformLocation(program, "uScan")
         uLines = GLES20.glGetUniformLocation(program, "uLines")
+        val ids = IntArray(1)
+        GLES20.glGenTextures(1, ids, 0); fboTex = ids[0]
+        GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, fboTex)
+        GLES20.glTexImage2D(GLES20.GL_TEXTURE_2D, 0, GLES20.GL_RGBA, DW, DH, 0, GLES20.GL_RGBA, GLES20.GL_UNSIGNED_BYTE, null)
+        GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MIN_FILTER, GLES20.GL_LINEAR)
+        GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MAG_FILTER, GLES20.GL_LINEAR)
+        GLES20.glGenFramebuffers(1, ids, 0); fbo = ids[0]
+        GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, fbo)
+        GLES20.glFramebufferTexture2D(GLES20.GL_FRAMEBUFFER, GLES20.GL_COLOR_ATTACHMENT0, GLES20.GL_TEXTURE_2D, fboTex, 0)
+        if (GLES20.glCheckFramebufferStatus(GLES20.GL_FRAMEBUFFER) != GLES20.GL_FRAMEBUFFER_COMPLETE) {
+            Log.w(TAG, "detection framebuffer incomplete; auto-detect disabled")
+            GLES20.glDeleteFramebuffers(1, intArrayOf(fbo), 0); fbo = 0
+        }
+        GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, 0)
+    }
+
+    /**
+     * Auto-detection sample (R6): draw the whole uncropped frame into a small offscreen buffer and
+     * read it back. ~[DW]x[DH] RGBA every [DETECT_INTERVAL_NS], on the GL thread.
+     */
+    private fun _detect(oesTex: Int, texMatrix: FloatArray, frameW: Int, frameH: Int) {
+        if (fbo == 0 || frameW <= 0 || frameH <= 0) return
+        val now = System.nanoTime()
+        val resized = frameW != lastFrameW || frameH != lastFrameH
+        if (!resized && now - lastDetectNs < DETECT_INTERVAL_NS) return
+        lastDetectNs = now; lastFrameW = frameW; lastFrameH = frameH
+        GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, fbo)
+        GLES20.glViewport(0, 0, DW, DH)
+        _quad(oesTex, texMatrix, NormRect.FULL, 0f, 0)
+        readBuf.position(0)
+        GLES20.glReadPixels(0, 0, DW, DH, GLES20.GL_RGBA, GLES20.GL_UNSIGNED_BYTE, readBuf)
+        GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, 0)
+        readBuf.position(0)
+        readBuf.get(readBytes)
+        VideoController.onDetection(BarDetector.detect(readBytes, DW, DH, bottomUp = true), frameW, frameH, resized)
     }
 
     /** Draw one frame into the bound window surface of size winW x winH. Caller swaps. */
     fun draw(oesTex: Int, texMatrix: FloatArray, winW: Int, winH: Int, frameW: Int, frameH: Int) {
         val cfg = VideoController.renderConfig(frameW, frameH)
+        if (cfg.detect) _detect(oesTex, texMatrix, frameW, frameH)
         GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, 0)
         GLES20.glViewport(0, 0, winW, winH)
         GLES20.glClearColor(0f, 0f, 0f, 1f)
@@ -64,6 +107,9 @@ class QuestFrameRenderer {
 
     fun release() {
         if (program != 0) GLES20.glDeleteProgram(program)
+        if (fbo != 0) GLES20.glDeleteFramebuffers(1, intArrayOf(fbo), 0)
+        if (fboTex != 0) GLES20.glDeleteTextures(1, intArrayOf(fboTex), 0)
+        fbo = 0; fboTex = 0
         program = 0
     }
 
@@ -88,6 +134,10 @@ class QuestFrameRenderer {
 
     companion object {
         private const val TAG = "QuestFrameRenderer"
+        /** Detection buffer: 16:9 and fine enough to tell GB/GBC (10:9) from SNES (8:7). */
+        const val DW = 320
+        const val DH = 180
+        private const val DETECT_INTERVAL_NS = 400_000_000L
 
         private val POS = _fb(floatArrayOf(-1f, -1f, 1f, -1f, -1f, 1f, 1f, 1f))
         private val TEX = _fb(floatArrayOf(0f, 0f, 1f, 0f, 0f, 1f, 1f, 1f))

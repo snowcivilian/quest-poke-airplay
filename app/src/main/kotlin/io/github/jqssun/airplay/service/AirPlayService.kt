@@ -337,6 +337,7 @@ class AirPlayService : LifecycleService(), RaopCallbackHandler, LogListener {
                 .collect { audioRenderer.updateConfig(it) }
         }
         io.github.snowcivilian.questairplay.video.VideoController.init(this, prefs, lifecycleScope) // quest fork
+        io.github.snowcivilian.questairplay.GameMode.init(prefs, lifecycleScope) // quest fork (R7)
         lifecycleScope.launch {
             prefs.observe {
                 Triple(this[Prefs.APP_VOLUME], this[Prefs.APP_MUTE], this[Prefs.IGNORE_SENDER_VOLUME])
