@@ -34,6 +34,7 @@ import androidx.lifecycle.lifecycleScope
 import androidx.media.app.NotificationCompat as MediaNotificationCompat
 import io.github.jqssun.airplay.MainActivity
 import io.github.jqssun.airplay.Prefs
+import io.github.snowcivilian.questairplay.audio.VolumeMath
 import io.github.jqssun.airplay.R
 import io.github.jqssun.airplay.changes
 import io.github.jqssun.airplay.get
@@ -177,6 +178,9 @@ class AirPlayService : LifecycleService(), RaopCallbackHandler, LogListener {
     private var mediaReceiver: BroadcastReceiver? = null
     private var volumeReceiver: BroadcastReceiver? = null
     @Volatile private var _syncClientVol = Prefs.SYNC_CLIENT_VOLUME.def
+    // quest fork (R4): in-app volume, and whether the sender's volume is ignored entirely
+    @Volatile private var _appGain = 1f
+    @Volatile private var _ignoreSenderVol = Prefs.IGNORE_SENDER_VOLUME.def
     private var _pendingServerVolEchoes = 0
     // senders park volume at -30 as route closes
     private var _serverPreZeroIdx = -1
@@ -295,7 +299,7 @@ class AirPlayService : LifecycleService(), RaopCallbackHandler, LogListener {
                 val prev = intent.getIntExtra(VolumeBroadcast.EXTRA_PREV_VALUE, -1)
                 if (idx < 0 || prev < 0 || idx == prev) return
                 if (_pendingServerVolEchoes > 0) { _pendingServerVolEchoes--; return }
-                if (!_syncClientVol || _connectionCount.value == 0) return
+                if (_ignoreSenderVol || !_syncClientVol || _connectionCount.value == 0) return
                 val target = idx.toFloat() / _serverVolMax()
                 Log.d(TAG, "receiver volume $prev -> $idx, sync sender to $target")
                 _serverPreZeroIdx = -1
@@ -331,6 +335,15 @@ class AirPlayService : LifecycleService(), RaopCallbackHandler, LogListener {
             prefs.audioConfigFlow()
                 .debounce(AUDIO_CONFIG_DEBOUNCE_MS)
                 .collect { audioRenderer.updateConfig(it) }
+        }
+        lifecycleScope.launch {
+            prefs.observe {
+                Triple(this[Prefs.APP_VOLUME], this[Prefs.APP_MUTE], this[Prefs.IGNORE_SENDER_VOLUME])
+            }.collect { (vol, mute, ignore) ->
+                _appGain = VolumeMath.appGain(vol, mute)
+                _ignoreSenderVol = ignore
+                _applyClientVol()
+            }
         }
         lifecycleScope.launch {
             prefs.observe { this[Prefs.SYNC_CLIENT_VOLUME] }.collect {
@@ -731,6 +744,7 @@ class AirPlayService : LifecycleService(), RaopCallbackHandler, LogListener {
 
     private fun _applyClientVol() {
         val frac = _clientVol
+        if (_ignoreSenderVol) { _setClientGain(1f); return }
         if (!_syncClientVol) {
             _setClientGain(_clientGain(frac ?: 1f))
             return
@@ -747,9 +761,10 @@ class AirPlayService : LifecycleService(), RaopCallbackHandler, LogListener {
     }
 
     private fun _setClientGain(gain: Float) {
-        if (gain == audioRenderer.clientGain) return
-        audioRenderer.setClientGain(gain)
-        airPlayVideoPlayer.setClientGain(gain)
+        val out = VolumeMath.outputGain(_appGain, gain, _ignoreSenderVol)
+        if (out == audioRenderer.clientGain) return
+        audioRenderer.setClientGain(out)
+        airPlayVideoPlayer.setClientGain(out)
     }
 
     private fun _serverVolMax() = audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC)

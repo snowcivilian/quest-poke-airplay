@@ -114,4 +114,9 @@ object Prefs {
     val ADVERTISE_AUDIO = bool("advertise_audio", true, restart = true)
     val LAUNCH_ON_CONNECT = bool("launch_on_connect", true)
     val USB_ONLY = bool("usb_only", false, restart = true)
+
+    // quest fork (R4): in-app volume applied to the app's audio output, independent of the sender
+    val APP_VOLUME = int("app_volume", 100, 0..100)
+    val APP_MUTE = bool("app_mute", false)
+    val IGNORE_SENDER_VOLUME = bool("ignore_sender_volume", true)
 }

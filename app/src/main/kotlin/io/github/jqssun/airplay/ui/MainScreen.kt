@@ -679,6 +679,9 @@ private fun OverviewContent(
                     }
                 }
             }
+            if (state == ServerState.RUNNING && mirroringActive && !showAudioMode) { // quest fork (R4)
+                io.github.snowcivilian.questairplay.ui.VolumeOverlay(viewModel, Modifier.align(Alignment.BottomCenter).padding(8.dp))
+            }
             if (debugEnabled && connections > 0) {
                 DebugOverlay(debugInfo, Modifier.align(Alignment.TopStart).padding(8.dp))
             }
@@ -816,6 +819,11 @@ private fun FullscreenVideo(
                 }
             }
         }
+        // quest fork (R4)
+        androidx.compose.animation.AnimatedVisibility(
+            visible = controlsVisible,
+            modifier = Modifier.align(Alignment.BottomCenter).padding(12.dp)
+        ) { io.github.snowcivilian.questairplay.ui.VolumeOverlay(viewModel) }
         if (debugEnabled) {
             DebugOverlay(debugInfo, Modifier.align(Alignment.TopStart).padding(8.dp))
         }

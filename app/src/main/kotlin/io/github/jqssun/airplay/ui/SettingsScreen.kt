@@ -87,6 +87,8 @@ fun SettingsScreen(viewModel: MainViewModel) {
             .verticalScroll(rememberScrollState())
             .padding(vertical = 8.dp)
     ) {
+        io.github.snowcivilian.questairplay.ui.VolumeSettings(viewModel) // quest fork (R4)
+
         SectionHeader(stringResource(R.string.section_server))
 
         SettingTextField(
