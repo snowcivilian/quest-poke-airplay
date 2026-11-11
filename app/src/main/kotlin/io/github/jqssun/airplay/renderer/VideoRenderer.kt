@@ -156,6 +156,7 @@ class VideoRenderer(ctx: Context) {
                 buf.clear()
                 buf.put(data)
                 c.queueInputBuffer(idx, 0, data.size, ntpTimeNs / 1000, 0)
+                io.github.snowcivilian.questairplay.video.LatencyStats.onQueued(ntpTimeNs / 1000) // quest fork (R9)
                 firstFrameQueued = true
                 return
             }
@@ -272,6 +273,7 @@ class VideoRenderer(ctx: Context) {
             val idx = c.dequeueOutputBuffer(info, 0)
             if (idx < 0) break
             _recordOutputFrameTime()
+            io.github.snowcivilian.questairplay.video.LatencyStats.onReleased(info.presentationTimeUs) // quest fork (R9)
             if (scheduledOutputBufferRelease) {
                 // schedule frame at VSYNC matching its NTP presentation time
                 val ptsUs = info.presentationTimeUs

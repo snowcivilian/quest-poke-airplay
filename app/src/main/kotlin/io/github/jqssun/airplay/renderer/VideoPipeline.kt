@@ -32,6 +32,8 @@ class VideoPipeline {
     private var uTexMatrix = 0
     private val texMatrix = FloatArray(16)
     private var hasFrame = false
+    // quest fork: crop/aspect/shader renderer replaces the plain blit below
+    private val quest = io.github.snowcivilian.questairplay.video.QuestFrameRenderer()
 
     private var surfaceTexture: SurfaceTexture? = null
     var inputSurface: Surface? = null; private set
@@ -146,6 +148,13 @@ class VideoPipeline {
     }
 
     private fun _render() {
+        quest.draw(oesTex, texMatrix, winW, winH, videoW, videoH)
+        egl?.swap(window)
+        io.github.snowcivilian.questairplay.video.LatencyStats.onDisplayed()
+    }
+
+    @Suppress("unused") // upstream's original blit, kept for easy merging
+    private fun _renderUpstream() {
         GLES20.glViewport(0, 0, winW, winH)
         GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT)
         GLES20.glUseProgram(program)
@@ -163,6 +172,7 @@ class VideoPipeline {
     }
 
     private fun _initGl() {
+        quest.init()
         program = _buildProgram()
         aPos = GLES20.glGetAttribLocation(program, "aPos")
         aTex = GLES20.glGetAttribLocation(program, "aTex")
@@ -206,6 +216,7 @@ class VideoPipeline {
     }
 
     private fun _releaseGl() {
+        quest.release()
         surfaceTexture?.release()
         surfaceTexture = null
         inputSurface?.release()

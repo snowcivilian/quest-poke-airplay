@@ -108,7 +108,8 @@ fun MainScreen(
 
     // don't use movableContentOf: moving AndroidView across subcomposition boundaries makes it crash on reparent
     val video: @Composable () -> Unit = {
-        val aspect by viewModel.videoAspect.collectAsState()
+        // quest fork: size the surface to the cropped preset, not the raw stream
+        val aspect by io.github.snowcivilian.questairplay.video.VideoController.displayAspect.collectAsState()
         VideoSurfaceView(
             onSurfaceAvailable = onSurfaceAvailable,
             onSurfaceDestroyed = onSurfaceDestroyed,
@@ -664,6 +665,7 @@ private fun OverviewContent(
                 }
                 if (state == ServerState.RUNNING && mirroringActive) {
                     Row(modifier = Modifier.align(Alignment.TopEnd).padding(4.dp)) {
+                        if (androidx.compose.ui.res.booleanResource(R.bool.show_pip_button)) // quest fork
                         IconButton(onClick = onPip, modifier = Modifier.dpadFocus()) {
                             Icon(
                                 painterResource(R.drawable.ic_pip), contentDescription = stringResource(R.string.cd_pip),
@@ -805,6 +807,7 @@ private fun FullscreenVideo(
             modifier = Modifier.align(Alignment.TopEnd)
         ) {
             Row(modifier = Modifier.padding(8.dp)) {
+                if (androidx.compose.ui.res.booleanResource(R.bool.show_pip_button)) // quest fork
                 IconButton(onClick = onPip, modifier = Modifier.dpadFocus()) {
                     Icon(
                         painterResource(R.drawable.ic_pip), contentDescription = stringResource(R.string.cd_pip),

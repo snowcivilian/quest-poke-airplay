@@ -119,4 +119,7 @@ object Prefs {
     val APP_VOLUME = int("app_volume", 100, 0..100)
     val APP_MUTE = bool("app_mute", false)
     val IGNORE_SENDER_VOLUME = bool("ignore_sender_volume", true)
+    // quest fork (R5): system preset id from assets/presets.json; panel relaunches at the preset's aspect
+    val PRESET = str("preset", "full")
+    val PANEL_RESIZE = bool("panel_resize", true)
 }

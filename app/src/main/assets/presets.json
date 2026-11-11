@@ -1,0 +1,23 @@
+{
+  "_comment": [
+    "System presets (R5). Edit here, not in code.",
+    "sourceAspect: aspect ratio (w/h) of the game box Delta sends inside the stream. Defaults to native w/h",
+    "  (square pixels). Used to crop and to auto-detect the system. Tune from the debug overlay's 'detected' line.",
+    "displayAspect: aspect ratio of the panel / output, e.g. 4:3 for TV systems (pixel-aspect correction).",
+    "crop: optional explicit crop [left, top, right, bottom] as fractions of the frame; overrides the centered fit.",
+    "native: native resolution, used for scanline count. detect: whether auto-detection may pick this preset."
+  ],
+  "version": 1,
+  "presets": [
+    { "id": "full",       "label": "Full frame",               "displayAspect": null,  "detect": true },
+    { "id": "nes",        "label": "NES",                      "native": [256, 240], "displayAspect": [4, 3],  "detect": true },
+    { "id": "nes_8x7",    "label": "NES (8:7)",                "native": [256, 240], "displayAspect": [8, 7],  "detect": false },
+    { "id": "snes",       "label": "SNES",                     "native": [256, 224], "displayAspect": [4, 3],  "detect": true },
+    { "id": "n64",        "label": "N64",                      "native": [320, 240], "displayAspect": [4, 3],  "detect": true },
+    { "id": "gb",         "label": "Game Boy / Color",         "native": [160, 144], "displayAspect": [10, 9], "detect": true },
+    { "id": "gba",        "label": "GBA",                      "native": [240, 160], "displayAspect": [3, 2],  "detect": true },
+    { "id": "ds_top",     "label": "DS, top screen only",      "native": [256, 192], "displayAspect": [4, 3],  "detect": false },
+    { "id": "ds_stacked", "label": "DS, both screens stacked", "native": [256, 384], "displayAspect": [2, 3],  "detect": true },
+    { "id": "genesis",    "label": "Genesis / Mega Drive",     "native": [320, 224], "displayAspect": [4, 3],  "detect": true }
+  ]
+}

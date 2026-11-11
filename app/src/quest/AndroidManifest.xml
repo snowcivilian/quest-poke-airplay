@@ -27,6 +27,73 @@
                 android:defaultHeight="720dp"
                 android:minWidth="640dp"
                 android:minHeight="360dp" />
+            <meta-data android:name="io.github.snowcivilian.questairplay.PANEL_ASPECT" android:value="16:9" />
+        </activity>
+
+        <!-- Per-aspect panels (R5). Horizon OS has no runtime panel resize, so PanelSwitcher relaunches into these. -->
+        <activity
+            android:name="io.github.snowcivilian.questairplay.panel.Panel4x3Activity"
+            android:exported="false"
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboardHidden"
+            android:launchMode="singleTop">
+            <layout
+                android:defaultWidth="960dp"
+                android:defaultHeight="720dp"
+                android:minWidth="480dp"
+                android:minHeight="360dp" />
+            <meta-data android:name="io.github.snowcivilian.questairplay.PANEL_ASPECT" android:value="4:3" />
+        </activity>
+
+        <activity
+            android:name="io.github.snowcivilian.questairplay.panel.Panel3x2Activity"
+            android:exported="false"
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboardHidden"
+            android:launchMode="singleTop">
+            <layout
+                android:defaultWidth="1080dp"
+                android:defaultHeight="720dp"
+                android:minWidth="540dp"
+                android:minHeight="360dp" />
+            <meta-data android:name="io.github.snowcivilian.questairplay.PANEL_ASPECT" android:value="3:2" />
+        </activity>
+
+        <activity
+            android:name="io.github.snowcivilian.questairplay.panel.Panel10x9Activity"
+            android:exported="false"
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboardHidden"
+            android:launchMode="singleTop">
+            <layout
+                android:defaultWidth="800dp"
+                android:defaultHeight="720dp"
+                android:minWidth="400dp"
+                android:minHeight="360dp" />
+            <meta-data android:name="io.github.snowcivilian.questairplay.PANEL_ASPECT" android:value="10:9" />
+        </activity>
+
+        <activity
+            android:name="io.github.snowcivilian.questairplay.panel.Panel8x7Activity"
+            android:exported="false"
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboardHidden"
+            android:launchMode="singleTop">
+            <layout
+                android:defaultWidth="822dp"
+                android:defaultHeight="720dp"
+                android:minWidth="411dp"
+                android:minHeight="360dp" />
+            <meta-data android:name="io.github.snowcivilian.questairplay.PANEL_ASPECT" android:value="8:7" />
+        </activity>
+
+        <activity
+            android:name="io.github.snowcivilian.questairplay.panel.Panel2x3Activity"
+            android:exported="false"
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboardHidden"
+            android:launchMode="singleTop">
+            <layout
+                android:defaultWidth="600dp"
+                android:defaultHeight="900dp"
+                android:minWidth="300dp"
+                android:minHeight="450dp" />
+            <meta-data android:name="io.github.snowcivilian.questairplay.PANEL_ASPECT" android:value="2:3" />
         </activity>
 
         <!-- Seeds Quest-specific defaults into upstream's settings store before Application.onCreate. -->

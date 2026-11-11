@@ -71,12 +71,22 @@ fun VolumeRow(viewModel: MainViewModel, modifier: Modifier = Modifier, contentCo
 @Composable
 fun VolumeOverlay(viewModel: MainViewModel, modifier: Modifier = Modifier) {
     Surface(
-        modifier = modifier.widthIn(max = 420.dp),
+        modifier = modifier.widthIn(max = 480.dp),
         shape = RoundedCornerShape(24.dp),
         color = Color.Black.copy(alpha = 0.55f),
     ) {
-        VolumeRow(viewModel, Modifier.padding(horizontal = 8.dp), contentColor = Color.White)
+        Row(Modifier.padding(horizontal = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+            PresetMenuButton(viewModel, tint = Color.White)
+            VolumeRow(viewModel, Modifier.weight(1f), contentColor = Color.White)
+        }
     }
+}
+
+/** Quest sections at the top of the settings screen. */
+@Composable
+fun QuestSettings(viewModel: MainViewModel) {
+    VolumeSettings(viewModel)
+    DisplaySettings(viewModel)
 }
 
 /** Volume section for the settings screen. */

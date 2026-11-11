@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Horizon OS has no usable Picture-in-Picture -->
+    <bool name="show_pip_button">false</bool>
+</resources>

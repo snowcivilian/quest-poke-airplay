@@ -33,7 +33,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 
 @AndroidEntryPoint
-class MainActivity : ComponentActivity() {
+open class MainActivity : ComponentActivity() { // quest fork: open for per-aspect panel subclasses
 
     private val viewModel: MainViewModel by viewModels()
     private var service: AirPlayService? = null
@@ -120,6 +120,7 @@ class MainActivity : ComponentActivity() {
                 )
             }
         }
+        io.github.snowcivilian.questairplay.panel.PanelSwitcher.attach(this) // quest fork (R5)
     }
 
     private fun _granted(permission: String) =
