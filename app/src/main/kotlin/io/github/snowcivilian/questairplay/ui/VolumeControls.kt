@@ -87,6 +87,7 @@ fun VolumeOverlay(viewModel: MainViewModel, modifier: Modifier = Modifier) {
 fun QuestSettings(viewModel: MainViewModel) {
     VolumeSettings(viewModel)
     DisplaySettings(viewModel)
+    TheaterSettings(viewModel)
 }
 
 /** Volume section for the settings screen. */

@@ -46,6 +46,12 @@ object PanelSwitcher {
             }
     }.getOrDefault(emptyList())
 
+    /** Panel activity class that best fits what is being shown now, or null if there are none. */
+    fun bestPanelClass(ctx: Context): String? {
+        val panels = panels(ctx).ifEmpty { return null }
+        return panels[nearest(panels.map { it.second }, VideoController.displayAspect.value)].first
+    }
+
     @OptIn(FlowPreview::class)
     fun attach(activity: ComponentActivity) {
         val panels = panels(activity)

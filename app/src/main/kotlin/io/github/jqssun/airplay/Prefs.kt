@@ -128,4 +128,10 @@ object Prefs {
     // quest fork (R8)
     val CRT_ENABLED = bool("crt_enabled", false)
     val CRT_INTENSITY = int("crt_intensity", 50, 0..100)
+    // quest fork (R10): theater screen; sizes in cm, curve 0 = flat .. 100 = wrapped around the viewer
+    val THEATER_HEIGHT = int("theater_screen_height_cm", 200, 50..1000)
+    val THEATER_DISTANCE = int("theater_distance_cm", 350, 100..2000)
+    val THEATER_ELEVATION = int("theater_elevation_cm", 130, 0..300)
+    val THEATER_CURVE = int("theater_curve", 40, 0..100)
+    val THEATER_PASSTHROUGH = bool("theater_passthrough", false)
 }

@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <item name="theater_screen" type="id" />
+    <item name="theater_controls" type="id" />
+</resources>

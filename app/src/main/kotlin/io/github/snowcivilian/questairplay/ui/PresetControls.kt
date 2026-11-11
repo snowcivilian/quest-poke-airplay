@@ -73,6 +73,13 @@ fun PresetMenuButton(viewModel: MainViewModel, tint: Color = Color.Unspecified) 
 internal fun QuickMenuExtras(viewModel: MainViewModel, close: () -> Unit) {
     val ctx = LocalContext.current
     val auto by VideoController.auto.collectAsState()
+    if (io.github.snowcivilian.questairplay.theater.TheaterLauncher.available(ctx)) {
+        DropdownMenuItem(
+            modifier = Modifier.heightIn(min = 48.dp),
+            text = { Text("Theater mode") },
+            onClick = { close(); (ctx as? android.app.Activity)?.let(io.github.snowcivilian.questairplay.theater.TheaterLauncher::enter) },
+        )
+    }
     DropdownMenuItem(
         modifier = Modifier.heightIn(min = 48.dp),
         text = { Text("Auto-detect system") },

@@ -53,6 +53,7 @@ android {
             dimension = "target"
             applicationId = "io.github.snowcivilian.questairplay"
             versionNameSuffix = "-quest"
+            proguardFile("proguard-quest.pro")
         }
     }
 
@@ -149,6 +150,10 @@ dependencies {
 
     testImplementation("junit:junit:4.13.2") // quest fork: unit tests for pure logic
     testImplementation("org.json:json:20250517") // real org.json for JVM tests (android.jar's is a stub)
+    // quest fork (R10): Meta Spatial SDK for theater mode, quest flavor only. Matches Meta's samples.
+    "questImplementation"("com.meta.spatial:meta-spatial-sdk:0.15.0")
+    "questImplementation"("com.meta.spatial:meta-spatial-sdk-toolkit:0.15.0")
+    "questImplementation"("com.meta.spatial:meta-spatial-sdk-vr:0.15.0")
 
     implementation(libs.hilt.android)
     ksp(libs.hilt.compiler)
