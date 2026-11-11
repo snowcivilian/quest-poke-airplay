@@ -525,8 +525,9 @@ fun MainScreen(
                         visible = audioOnly && connections > 0 && tab != Tab.OVERVIEW,
                         onClick = { tab = Tab.OVERVIEW }
                     )
+                    val showLogsTab = androidx.compose.ui.res.booleanResource(R.bool.show_logs_tab) // quest fork
                     NavigationBar {
-                        Tab.entries.forEach { t ->
+                        Tab.entries.filter { it != Tab.LOGS || showLogsTab }.forEach { t ->
                             NavigationBarItem(
                                 selected = tab == t,
                                 onClick = { tab = t },

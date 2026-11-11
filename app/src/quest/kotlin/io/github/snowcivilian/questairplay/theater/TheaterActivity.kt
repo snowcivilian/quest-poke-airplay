@@ -30,6 +30,8 @@ import androidx.compose.ui.platform.ComposeView
 import com.meta.spatial.compose.ComposeFeature
 import com.meta.spatial.compose.ComposeViewPanelRegistration
 import com.meta.spatial.core.Quaternion
+import com.meta.spatial.toolkit.Grabbable
+import com.meta.spatial.toolkit.GrabbableType
 import com.meta.spatial.isdk.IsdkGrabbable
 import com.meta.spatial.isdk.IsdkPanelDimensions
 import com.meta.spatial.isdk.IsdkPanelGrabHandle
@@ -132,11 +134,12 @@ class TheaterActivity : AppSystemActivity() {
         rebuildScreen()
         // Low and centered below the line of sight, tilted up like a laptop (Quaternion = pitch, yaw, roll
         // in degrees; positive pitch faces up, as in Meta's SpatialVideoSample). VRFeature defaults to
-        // Interaction SDK input, so grabbing and resizing use the Isdk* components, not toolkit Grabbable.
+        // Interaction SDK input: Isdk* components give the handles and resizing, and ISDK only enables
+        // moving when a toolkit Grabbable is also present (IsdkComponentCreationSystem maps its type).
         val spot = Transform(Pose(Vector3(0f, 0.65f, 0.65f), Quaternion(35f, 0f, 0f)))
-        controls = Entity.create(Panel(R.id.theater_controls), spot, Visible(true),
+        controls = Entity.create(Panel(R.id.theater_controls), spot, Visible(true), Grabbable(true, GrabbableType.FACE),
             IsdkPanelDimensions(), IsdkGrabbable(), IsdkPanelGrabHandle(), IsdkPanelResize())
-        pill = Entity.create(Panel(R.id.theater_controls_pill), spot, Visible(false),
+        pill = Entity.create(Panel(R.id.theater_controls_pill), spot, Visible(false), Grabbable(true, GrabbableType.FACE),
             IsdkPanelDimensions(), IsdkGrabbable(), IsdkPanelGrabHandle())
         scope.launch {
             VideoController.displayAspect.collect { rebuildScreen() }

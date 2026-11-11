@@ -2,4 +2,6 @@
 <resources>
     <!-- Horizon OS has no usable Picture-in-Picture -->
     <bool name="show_pip_button">false</bool>
+    <!-- logs live in Settings on Quest -->
+    <bool name="show_logs_tab">false</bool>
 </resources>
