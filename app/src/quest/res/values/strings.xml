@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Quest flavor overrides of upstream strings. -->
+<resources>
+    <string name="app_name">Quest AirPlay</string>
+    <string name="waiting_for_connection">Waiting for iPhone\nOn the iPhone: Control Center → Screen Mirroring → Quest</string>
+</resources>

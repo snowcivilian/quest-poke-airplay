@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Horizon OS overlay for the quest flavor. Merged on top of src/main/AndroidManifest.xml. -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <application>
+        <!-- Documented: https://developers.meta.com/vr/documentation/android-apps/port-an-existing-app -->
+        <meta-data
+            android:name="com.oculus.supportedDevices"
+            android:value="quest3" />
+
+        <!-- Undocumented Horizon OS shell flags (seen in other Quest apps' manifests, not in Meta's
+             public docs). Ask the shell to keep the panel's aspect ratio while resizing. Verify on device. -->
+        <meta-data
+            android:name="com.oculus.vrshell.supports_free_resizing"
+            android:value="true" />
+        <meta-data
+            android:name="com.oculus.vrshell.free_resizing_lock_aspect_ratio"
+            android:value="true" />
+
+        <activity
+            android:name="io.github.jqssun.airplay.MainActivity"
+            tools:node="merge">
+            <!-- Launch as a large 16:9 panel; dp units per Meta's porting guide. -->
+            <layout
+                android:defaultWidth="1280dp"
+                android:defaultHeight="720dp"
+                android:minWidth="640dp"
+                android:minHeight="360dp" />
+        </activity>
+
+        <!-- Seeds Quest-specific defaults into upstream's settings store before Application.onCreate. -->
+        <provider
+            android:name="io.github.snowcivilian.questairplay.QuestDefaultsProvider"
+            android:authorities="${applicationId}.questdefaults"
+            android:exported="false"
+            android:initOrder="1000" />
+    </application>
+</manifest>

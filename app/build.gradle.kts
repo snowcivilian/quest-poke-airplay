@@ -11,7 +11,8 @@ val localProps = Properties().apply {
     rootProject.file("local.properties").takeIf { it.exists() }?.inputStream()?.use(::load)
 }
 
-val allAbis = listOf("arm64-v8a", "armeabi-v7a", "x86_64")
+// quest fork: -Pabis=arm64-v8a limits the native build (Quest 3 is arm64 only)
+val allAbis = (findProperty("abis") as String?)?.split(",") ?: listOf("arm64-v8a", "armeabi-v7a", "x86_64")
 
 android {
     namespace = "io.github.jqssun.airplay"
@@ -44,6 +45,17 @@ android {
         }
     }
 
+    // quest fork: "generic" is upstream's app unchanged; "quest" is the Horizon OS build (src/quest)
+    flavorDimensions += "target"
+    productFlavors {
+        create("generic") { dimension = "target"; isDefault = true }
+        create("quest") {
+            dimension = "target"
+            applicationId = "io.github.snowcivilian.questairplay"
+            versionNameSuffix = "-quest"
+        }
+    }
+
     externalNativeBuild {
         cmake {
             path = file("src/main/cpp/CMakeLists.txt")
@@ -52,6 +64,7 @@ android {
 
     buildTypes {
         debug {
+            signingConfigs.findByName("release")?.let { signingConfig = it } // quest fork: one key for every build
             ndk { abiFilters += allAbis }
         }
         release {
