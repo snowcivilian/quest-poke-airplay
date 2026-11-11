@@ -71,9 +71,8 @@ Phases 1 to 3 are required, theater mode included. Stretch items come after the 
 | R9 | 2 | **Delay readout in the debug overlay.** Add decode-to-display time and audio buffer size to upstream's overlay. | The overlay shows both numbers live. |
 | R10 | 3 | **Immersive theater mode.** An immersive view built with the Meta Spatial SDK as a hybrid app (targets Horizon OS v69+, per [Meta's hybrid apps guide](https://developers.meta.com/horizon/documentation/spatial-sdk/hybrid-apps-overview)). The game plays on a large virtual screen in a dark environment, with a passthrough option. Screen size, distance and curvature are adjustable, and recenter works. The AirPlay session must survive switching between panel and theater. | One button switches panel to theater and back without disconnecting or a black screen of more than 1 second. Presets and shader work in theater mode too. |
 | S1 | Stretch | **Split DS screens in theater mode.** With a DS preset that shows both screens, split the frame into two virtual screens: top screen large in front, bottom screen smaller, lower and tilted like a handheld. | Both screens show at their correct 4:3 aspect, positions are adjustable, and both stay in sync. |
-| S3 | Stretch | **Theater environments.** More virtual rooms beyond the dark theater, such as a retro living room with a CRT TV. | At least two environments to pick from in settings. |
 
-**Dropped:** integer and nearest-neighbor scaling. Delta has already scaled the game up, and the stream is compressed video, so we can't get pixel-perfect output on the receiving end.
+**Dropped:** S3, theater environments (more virtual rooms such as a retro living room), dropped 2026-11-11 as not worth the effort. Integer and nearest-neighbor scaling. Delta has already scaled the game up, and the stream is compressed video, so we can't get pixel-perfect output on the receiving end.
 
 ## System presets
 
@@ -195,7 +194,7 @@ Build in this order. Each milestone ends with an APK installed on the Quest and 
 5. **M4, speed and auto-detection.** Low-latency game mode (R7), the delay readout (R9) and automatic preset detection (R6). Measure delay against AIpin.
 6. **M5, shader.** CRT/scanline shader (R8).
 7. **M6, theater mode.** R10, using the Spatial SDK hybrid app pattern.
-8. **M7, stretch goals.** S1 split DS screens, then S4 Pokémon battle helper, then S3.
+8. **M7, stretch goals.** S1 split DS screens, then S4 Pokémon battle helper. (S3 dropped.)
 
 ## Testing and acceptance
 

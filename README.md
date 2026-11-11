@@ -124,7 +124,7 @@ If a system crops wrong or isn't auto-detected, turn on *Show stats overlay* and
 
 ## Status
 
-All required milestones (M0–M6, R1–R10) are built and in use. Stretch goals (split DS screens, Pokémon battle helper, extra theater rooms) aren't started. What still needs checking against the spec, and the known issues, are in [docs/TESTING.md](docs/TESTING.md).
+All required milestones (M0–M6, R1–R10) are built and in use. Stretch goals S1 (split DS screens) and S4 (Pokémon battle helper) are in progress on their own branches; S3 (extra theater rooms) was dropped. What still needs checking against the spec, and the known issues, are in [docs/TESTING.md](docs/TESTING.md).
 
 ## Merging upstream
 
