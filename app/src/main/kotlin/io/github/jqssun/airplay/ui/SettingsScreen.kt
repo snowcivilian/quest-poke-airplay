@@ -88,6 +88,7 @@ fun SettingsScreen(viewModel: MainViewModel) {
             .padding(vertical = 8.dp)
     ) {
         io.github.snowcivilian.questairplay.ui.QuestSettings(viewModel) // quest fork
+        if (io.github.snowcivilian.questairplay.ui.AdvancedSection()) { // quest fork: upstream settings collapsed
 
         SectionHeader(stringResource(R.string.section_server))
 
@@ -442,6 +443,7 @@ fun SettingsScreen(viewModel: MainViewModel) {
                 onCheckedChange = { viewModel.set(Prefs.BENCHMARK_LOG, it) }
             )
         }
+        } // quest fork: end Advanced
     }
 }
 

@@ -52,6 +52,7 @@ android {
         create("quest") {
             dimension = "target"
             applicationId = "io.github.snowcivilian.questairplay"
+            minSdk = 34 // Quest 3 (Horizon OS) is API 34, as in Meta's HybridSample; Spatial SDK compose needs 28+
             versionNameSuffix = "-quest"
             proguardFile("proguard-quest.pro")
         }
@@ -154,6 +155,7 @@ dependencies {
     "questImplementation"("com.meta.spatial:meta-spatial-sdk:0.15.0")
     "questImplementation"("com.meta.spatial:meta-spatial-sdk-toolkit:0.15.0")
     "questImplementation"("com.meta.spatial:meta-spatial-sdk-vr:0.15.0")
+    "questImplementation"("com.meta.spatial:meta-spatial-sdk-compose:0.15.0")
 
     implementation(libs.hilt.android)
     ksp(libs.hilt.compiler)

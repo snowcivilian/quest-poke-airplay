@@ -2,4 +2,5 @@
 <resources>
     <item name="theater_screen" type="id" />
     <item name="theater_controls" type="id" />
+    <item name="theater_controls_pill" type="id" />
 </resources>

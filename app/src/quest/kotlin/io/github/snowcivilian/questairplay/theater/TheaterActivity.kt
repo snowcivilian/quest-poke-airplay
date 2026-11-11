@@ -26,7 +26,14 @@ import com.meta.spatial.toolkit.QuadShapeOptions
 import com.meta.spatial.toolkit.Transform
 import com.meta.spatial.toolkit.UIPanelSettings
 import com.meta.spatial.toolkit.VideoSurfacePanelRegistration
-import com.meta.spatial.toolkit.ViewPanelRegistration
+import androidx.compose.ui.platform.ComposeView
+import com.meta.spatial.compose.ComposeFeature
+import com.meta.spatial.compose.ComposeViewPanelRegistration
+import com.meta.spatial.toolkit.Grabbable
+import com.meta.spatial.toolkit.GrabbableType
+import com.meta.spatial.toolkit.Visible
+import io.github.snowcivilian.questairplay.ui.TheaterControlsPanel
+import io.github.snowcivilian.questairplay.ui.TheaterControlsPill
 import com.meta.spatial.vr.VRFeature
 import io.github.jqssun.airplay.MainActivity
 import io.github.jqssun.airplay.Prefs
@@ -50,6 +57,8 @@ class TheaterActivity : AppSystemActivity() {
     private var service: AirPlayService? = null
     private var surface: Surface? = null
     private var screen: Entity? = null
+    private var controls: Entity? = null
+    private var pill: Entity? = null
     private var spec: ScreenSpec? = null // computed once the activity has a Context
     private var sceneReady = false
 
@@ -75,7 +84,7 @@ class TheaterActivity : AppSystemActivity() {
         prefs.registerOnSharedPreferenceChangeListener(prefListener)
     }
 
-    override fun registerFeatures(): List<SpatialFeature> = listOf(VRFeature(this))
+    override fun registerFeatures(): List<SpatialFeature> = listOf(VRFeature(this), ComposeFeature())
 
     override fun registerPanels(): List<PanelRegistration> = listOf(
         VideoSurfacePanelRegistration(
@@ -90,14 +99,26 @@ class TheaterActivity : AppSystemActivity() {
                 )
             },
         ),
-        ViewPanelRegistration(
+        ComposeViewPanelRegistration(
             R.id.theater_controls,
-            dynamicViewCreator = { _, ctx -> TheaterControls.build(ctx, prefs, ::backToPanel) },
-            settingsCreator = { _ ->
-                UIPanelSettings(shape = QuadShapeOptions(width = 0.62f, height = 0.62f), display = DpPerMeterDisplayOptions())
-            },
+            { _, ctx -> ComposeView(ctx).apply { setContent { TheaterControlsPanel(::backToPanel) { showControls(false) } } } },
+            { _ -> UIPanelSettings(shape = QuadShapeOptions(width = 0.5f, height = 0.62f), display = DpPerMeterDisplayOptions()) },
+        ),
+        ComposeViewPanelRegistration(
+            R.id.theater_controls_pill,
+            { _, ctx -> ComposeView(ctx).apply { setContent { TheaterControlsPill({ showControls(true) }, ::backToPanel) } } },
+            { _ -> UIPanelSettings(shape = QuadShapeOptions(width = 0.34f, height = 0.075f), display = DpPerMeterDisplayOptions()) },
         ),
     )
+
+    /** Minimize swaps the full controls for a small pill at the same spot; both can be grabbed and moved. */
+    private fun showControls(full: Boolean) {
+        val from = if (full) pill else controls
+        val to = if (full) controls else pill
+        from?.tryGetComponent<Transform>()?.let { to?.setComponent(it) }
+        controls?.setComponent(Visible(full))
+        pill?.setComponent(Visible(!full))
+    }
 
     override fun onSceneReady() {
         super.onSceneReady()
@@ -106,7 +127,10 @@ class TheaterActivity : AppSystemActivity() {
         scene.setReferenceSpace(ReferenceSpace.LOCAL_FLOOR)
         scene.enablePassthrough(prefs[Prefs.THEATER_PASSTHROUGH])
         rebuildScreen()
-        Entity.create(Panel(R.id.theater_controls), Transform(Pose(Vector3(0f, 0.9f, 0.9f))))
+        // low and off to the side so it doesn't cover the screen; grab with the grip button to move
+        val spot = Transform(Pose(Vector3(-0.5f, 0.8f, 0.75f)))
+        controls = Entity.create(Panel(R.id.theater_controls), spot, Grabbable(true, GrabbableType.FACE), Visible(true))
+        pill = Entity.create(Panel(R.id.theater_controls_pill), spot, Grabbable(true, GrabbableType.FACE), Visible(false))
         scope.launch {
             VideoController.displayAspect.collect { rebuildScreen() }
         }
