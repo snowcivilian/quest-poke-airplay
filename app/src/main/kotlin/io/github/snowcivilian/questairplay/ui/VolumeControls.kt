@@ -1,6 +1,13 @@
 package io.github.snowcivilian.questairplay.ui
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.runtime.setValue
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -78,10 +85,29 @@ fun VolumeOverlay(@Suppress("UNUSED_PARAMETER") viewModel: MainViewModel, modifi
 
 /** Quest sections at the top of the settings screen. */
 @Composable
-fun QuestSettings(@Suppress("UNUSED_PARAMETER") viewModel: MainViewModel) {
+fun QuestSettings(viewModel: MainViewModel) {
     VolumeSettings()
     DisplaySettings()
     TheaterSettings()
+    LogsSection(viewModel)
+}
+
+/** Upstream's log viewer (with its export and clear buttons) in a collapsible, fixed-height box. */
+@Composable
+fun LogsSection(viewModel: MainViewModel) {
+    var open by androidx.compose.runtime.saveable.rememberSaveable { androidx.compose.runtime.mutableStateOf(false) }
+    androidx.compose.material3.HorizontalDivider(Modifier.padding(top = 8.dp))
+    androidx.compose.material3.ListItem(
+        modifier = Modifier.heightIn(min = TARGET).clickable { open = !open },
+        headlineContent = { Text("Logs", color = MaterialTheme.colorScheme.primary) },
+        supportingContent = { Text("Connection and playback events; export or clear from the top bar") },
+        trailingContent = {
+            Icon(if (open) Icons.Default.ExpandLess else Icons.Default.ExpandMore, null)
+        },
+    )
+    if (open) androidx.compose.foundation.layout.Box(Modifier.fillMaxWidth().height(420.dp).padding(horizontal = 8.dp)) {
+        io.github.jqssun.airplay.ui.LogsScreen(viewModel)
+    }
 }
 
 @Composable

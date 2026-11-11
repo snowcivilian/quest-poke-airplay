@@ -29,8 +29,11 @@ import com.meta.spatial.toolkit.VideoSurfacePanelRegistration
 import androidx.compose.ui.platform.ComposeView
 import com.meta.spatial.compose.ComposeFeature
 import com.meta.spatial.compose.ComposeViewPanelRegistration
-import com.meta.spatial.toolkit.Grabbable
-import com.meta.spatial.toolkit.GrabbableType
+import com.meta.spatial.core.Quaternion
+import com.meta.spatial.isdk.IsdkGrabbable
+import com.meta.spatial.isdk.IsdkPanelDimensions
+import com.meta.spatial.isdk.IsdkPanelGrabHandle
+import com.meta.spatial.isdk.IsdkPanelResize
 import com.meta.spatial.toolkit.Visible
 import io.github.snowcivilian.questairplay.ui.TheaterControlsPanel
 import io.github.snowcivilian.questairplay.ui.TheaterControlsPill
@@ -102,7 +105,7 @@ class TheaterActivity : AppSystemActivity() {
         ComposeViewPanelRegistration(
             R.id.theater_controls,
             { _, ctx -> ComposeView(ctx).apply { setContent { TheaterControlsPanel(::backToPanel) { showControls(false) } } } },
-            { _ -> UIPanelSettings(shape = QuadShapeOptions(width = 0.5f, height = 0.62f), display = DpPerMeterDisplayOptions()) },
+            { _ -> UIPanelSettings(shape = QuadShapeOptions(width = 0.5f, height = 0.56f), display = DpPerMeterDisplayOptions()) },
         ),
         ComposeViewPanelRegistration(
             R.id.theater_controls_pill,
@@ -127,10 +130,14 @@ class TheaterActivity : AppSystemActivity() {
         scene.setReferenceSpace(ReferenceSpace.LOCAL_FLOOR)
         scene.enablePassthrough(prefs[Prefs.THEATER_PASSTHROUGH])
         rebuildScreen()
-        // low and off to the side so it doesn't cover the screen; grab with the grip button to move
-        val spot = Transform(Pose(Vector3(-0.5f, 0.8f, 0.75f)))
-        controls = Entity.create(Panel(R.id.theater_controls), spot, Grabbable(true, GrabbableType.FACE), Visible(true))
-        pill = Entity.create(Panel(R.id.theater_controls_pill), spot, Grabbable(true, GrabbableType.FACE), Visible(false))
+        // Low and centered below the line of sight, tilted up like a laptop (Quaternion = pitch, yaw, roll
+        // in degrees; positive pitch faces up, as in Meta's SpatialVideoSample). VRFeature defaults to
+        // Interaction SDK input, so grabbing and resizing use the Isdk* components, not toolkit Grabbable.
+        val spot = Transform(Pose(Vector3(0f, 0.65f, 0.65f), Quaternion(35f, 0f, 0f)))
+        controls = Entity.create(Panel(R.id.theater_controls), spot, Visible(true),
+            IsdkPanelDimensions(), IsdkGrabbable(), IsdkPanelGrabHandle(), IsdkPanelResize())
+        pill = Entity.create(Panel(R.id.theater_controls_pill), spot, Visible(false),
+            IsdkPanelDimensions(), IsdkGrabbable(), IsdkPanelGrabHandle())
         scope.launch {
             VideoController.displayAspect.collect { rebuildScreen() }
         }

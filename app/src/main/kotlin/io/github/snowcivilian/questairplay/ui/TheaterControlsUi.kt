@@ -52,7 +52,7 @@ fun TheaterControlsPanel(onBack: () -> Unit, onMinimize: () -> Unit) = AirPlayTh
             SectionTitle("Screen")
             TheaterScreenSettings()
             Text(
-                "Move this panel: point at it and hold the grip button. Recenter: hold the Meta button.",
+                "Move or resize this panel with its handles. Recenter: hold the Meta button.",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(16.dp),
