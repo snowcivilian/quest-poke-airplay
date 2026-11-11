@@ -27,6 +27,19 @@ class PresetTest {
         assertEquals(4f / 3, p("snes").outputAspect(crop, 1920, 1080), 1e-4f)
     }
 
+    @Test fun dsStackedSplitsIntoTwoFourThreeScreens() {
+        val ds = p("ds_stacked")
+        assertTrue(ds.canSplit)
+        assertEquals(4f / 3, ds.splitAspect!!, 1e-4f)
+        val crop = ds.cropFor(1920, 1080)
+        val top = Geometry.sub(crop, ds.splitTop!!)
+        val bottom = Geometry.sub(crop, ds.splitBottom!!)
+        assertEquals(4f / 3, top.pixelAspect(1920, 1080), 1e-3f)
+        assertEquals(4f / 3, bottom.pixelAspect(1920, 1080), 1e-3f)
+        assertEquals(top.bottom, bottom.top, 1e-6f)
+        assertTrue(!p("gba").canSplit)
+    }
+
     @Test fun dsStackedIsTall() = assertEquals(2f / 3, p("ds_stacked").displayAspect!!, 1e-4f)
 
     @Test fun nonDetectablePresetsAreManualOnly() {

@@ -36,4 +36,8 @@ fun TheaterScreenSettings() {
     IntSlider("Distance", Prefs.THEATER_DISTANCE, 100, 1500, " cm")
     IntSlider("Elevation", Prefs.THEATER_ELEVATION, 30, 250, " cm")
     IntSlider("Curve", Prefs.THEATER_CURVE, 0, 100, "%")
+    val split by rememberPref(Prefs.THEATER_DS_SPLIT)
+    SettingToggle("Split DS screens", "With the DS both-screens preset: top screen in front, bottom screen below like a handheld",
+        split, prefSetter(Prefs.THEATER_DS_SPLIT))
+    if (split) IntSlider("DS bottom size", Prefs.THEATER_DS_BOTTOM_SCALE, 30, 100, "%")
 }

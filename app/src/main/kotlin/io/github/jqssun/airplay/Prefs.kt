@@ -134,4 +134,7 @@ object Prefs {
     val THEATER_ELEVATION = int("theater_elevation_cm", 130, 0..300)
     val THEATER_CURVE = int("theater_curve", 40, 0..100)
     val THEATER_PASSTHROUGH = bool("theater_passthrough", false)
+    // quest fork (S1): split DS screens in theater; bottom screen size as % of the top screen
+    val THEATER_DS_SPLIT = bool("theater_ds_split", true)
+    val THEATER_DS_BOTTOM_SCALE = int("theater_ds_bottom_scale", 60, 30..100)
 }

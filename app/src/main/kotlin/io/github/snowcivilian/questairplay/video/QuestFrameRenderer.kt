@@ -27,6 +27,9 @@ class QuestFrameRenderer {
     private var lastDetectNs = 0L
     private var lastFrameW = 0
     private var lastFrameH = 0
+    // S1 second output
+    private var secondaryFor: android.view.Surface? = null
+    private var secondaryEgl: android.opengl.EGLSurface = android.opengl.EGL14.EGL_NO_SURFACE
 
     fun init() {
         program = _program(VERT, FRAG)
@@ -103,6 +106,46 @@ class QuestFrameRenderer {
         GLES20.glDrawArrays(GLES20.GL_TRIANGLE_STRIP, 0, 4)
         GLES20.glDisableVertexAttribArray(aPos)
         GLES20.glDisableVertexAttribArray(aTex)
+    }
+
+    /**
+     * S1: draw the bottom DS screen onto the second surface with the same decoded frame, so both
+     * screens always show the same moment. Restores [primary] as the current surface afterwards.
+     */
+    fun drawSecondary(egl: io.github.jqssun.airplay.renderer.EglCore, primary: android.opengl.EGLSurface,
+                      oesTex: Int, texMatrix: FloatArray, frameW: Int, frameH: Int) {
+        val target = VideoController.secondarySurface?.takeIf { it.isValid }
+        if (target !== secondaryFor) {
+            if (secondaryEgl != android.opengl.EGL14.EGL_NO_SURFACE) {
+                egl.makeCurrent(); egl.destroySurface(secondaryEgl)
+                secondaryEgl = android.opengl.EGL14.EGL_NO_SURFACE
+            }
+            secondaryFor = target
+            if (target != null) secondaryEgl = egl.windowSurface(target)
+            egl.makeCurrent(primary)
+        }
+        val cfg = VideoController.renderConfig(frameW, frameH)
+        val crop = cfg.secondaryCrop
+        if (crop == null || secondaryEgl == android.opengl.EGL14.EGL_NO_SURFACE) return
+        egl.makeCurrent(secondaryEgl)
+        val w = egl.query(secondaryEgl, android.opengl.EGL14.EGL_WIDTH)
+        val h = egl.query(secondaryEgl, android.opengl.EGL14.EGL_HEIGHT)
+        GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, 0)
+        GLES20.glViewport(0, 0, w, h)
+        GLES20.glClearColor(0f, 0f, 0f, 1f)
+        GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT)
+        val vp = Geometry.viewport(w, h, cfg.secondaryAspect)
+        GLES20.glViewport(vp.x, vp.y, vp.w, vp.h)
+        _quad(oesTex, texMatrix, crop, cfg.scanlineIntensity, cfg.scanlineCount)
+        egl.swap(secondaryEgl)
+        egl.makeCurrent(primary)
+    }
+
+    /** Destroys the second output's EGL surface; call with the context current. */
+    fun releaseSecondary(egl: io.github.jqssun.airplay.renderer.EglCore) {
+        if (secondaryEgl != android.opengl.EGL14.EGL_NO_SURFACE) egl.destroySurface(secondaryEgl)
+        secondaryEgl = android.opengl.EGL14.EGL_NO_SURFACE
+        secondaryFor = null
     }
 
     fun release() {
