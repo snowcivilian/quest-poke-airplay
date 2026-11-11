@@ -1,93 +1,147 @@
-# AirPlay Receiver for Android
+# Quest AirPlay Receiver
 
-[![Stars](https://img.shields.io/github/stars/jqssun/android-airplay-server)](https://github.com/jqssun/android-airplay-server)
-[![GitHub](https://img.shields.io/github/downloads/jqssun/android-airplay-server/total?label=GitHub&logo=GitHub)](https://github.com/jqssun/android-airplay-server/releases)
-[![license](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://github.com/jqssun/android-airplay-server/blob/main/LICENSE)
-[![build](https://img.shields.io/github/actions/workflow/status/jqssun/android-airplay-server/apk.yml?label=build)](https://github.com/jqssun/android-airplay-server/actions/workflows/apk.yml)
-[![release](https://img.shields.io/github/v/release/jqssun/android-airplay-server)](https://github.com/jqssun/android-airplay-server/releases)
+A free, sideloaded AirPlay receiver for **Meta Quest 3**, built to play iPhone games (Delta) on the headset well: correct aspect ratio with no black bars, in-headset volume that sticks, low delay, and an immersive theater mode.
 
-A fully featured free and open-source implementation of AirPlay for Android that turns your device into an AirPlay-compatible display and speaker, based on [UxPlay](https://github.com/FDH2/UxPlay). It is the first open-source AirPlay 2 receiver for Android and Android TV, and works with iOS/iPadOS, macOS devices as well as other sender implementations.
+It's a private fork of [jqssun/android-airplay-server](https://github.com/jqssun/android-airplay-server) (GPL-3.0), which does the AirPlay work through [UxPlay](https://github.com/FDH2/UxPlay). Full spec: [docs/REQUIREMENTS.md](docs/REQUIREMENTS.md).
 
-[<img height="48" alt="Get it on Google Play" src="https://jqssun.github.io/images/badges/google-play-store.svg">](https://play.google.com/store/apps/details?id=io.github.jqssun.airplay)
-[<img height="48" alt="Get it on F-Droid" src="https://jqssun.github.io/images/badges/fdroid.svg">](https://f-droid.org/packages/io.github.jqssun.airplay)
-[<img height="48" alt="Get it on GitHub" src="https://jqssun.github.io/images/badges/github.svg">](https://github.com/jqssun/android-airplay-server/releases/latest)
-
-<video loop src='https://github.com/user-attachments/assets/79ed7c0c-0102-43cc-8816-4f00ce6a4199' alt="demo" width="200" style="display: block; margin: auto;"></video>
-
-## Compatibility
-
-- Android 7.0+, including Android TV
-- AirPlay devices on the same subnet, including iOS/iPadOS, macOS devices, or other sender implementations
+**Setup:** Delta runs on the iPhone with a Bluetooth controller paired to the phone. The phone screen-mirrors to the Quest. Saves stay in Delta.
 
 ## Features
 
-- Screen mirroring with H.264 and H.265 (HEVC) video decoding
-- Audio streaming with AAC-ELD, AAC-LC and ALAC audio decoding
-- Video playback with support for HLS, downloads, and remote controls
-- Music playback with track information, cover art, and remote controls
-- Support for Android TV with directional pad navigation and seeking controls
-- Support for Picture-in-Picture, automatic resolution and mode switching
-- Optional PIN authentication
-- Video resolution, overscan, and frame rate control
-- Audio latency control and support for software decoder fallback
-- Debug overlay with real-time statistics (FPS, bitrate, codec, resolution, frame count, audio volume, etc.)
-- Android native media session integration with notification controls
-- Wired secondary display for macOS/iPadOS devices over USB tethering
+| | What it does |
+| --- | --- |
+| **Quest panel** | Launches as a 16:9 panel named **Quest AirPlay**, starts listening automatically, shows *Waiting for iPhone*, receiver name **Quest**, no PIN, keeps the headset awake while streaming. |
+| **Volume** | Volume bar over the video (mute, 0–100 %) and in Settings. Saved across restarts. *Ignore iPhone volume* (on by default) stops the phone's buttons from changing the sound. |
+| **System presets** | One per Delta system: NES (and 8:7), SNES, N64, GB/GBC, GBA, DS top screen, DS both screens, Genesis, plus Full frame. Crops Delta's black bars and shows the game at the right shape (e.g. SNES at 4:3). Defined in [`presets.json`](app/src/main/assets/presets.json). |
+| **Panel fits the game** | Horizon OS can't resize a panel from code, so the panel reopens at the preset's shape (4:3, 3:2, 10:9, 8:7, 2:3 or 16:9). The stream keeps running. Can be turned off. |
+| **Auto-detect** | Measures the black bars about every 0.4 s and picks the matching system after 3 agreeing readings. Fades and dark scenes are ignored. Picking a preset by hand turns it off until you turn it back on. |
+| **Game mode** | On by default: lowest delay (frames shown as soon as decoded, low-latency audio, tight audio buffer). Turn off for smoother video watching. |
+| **Stats overlay** | Upstream's FPS/bitrate/audio overlay plus decode-to-display delay, the active preset and the measured game-box shape. |
+| **CRT scanlines** | Optional scanlines matched to the system's native line count, with an intensity slider. |
+| **Theater mode** | Immersive big screen (Meta Spatial SDK). Dark room or passthrough. Adjustable screen height, distance, elevation and curve. Recenter by holding the Meta button. Presets and scanlines apply here too. The controls panel can be grabbed, moved, resized and minimized. |
 
-> [!WARNING]
-> DRM content (e.g. from the Apple TV application) is not supported.
+### Using it
 
-## Configure from ADB
+1. Open **Quest AirPlay** from *Unknown Sources* in the Quest app library.
+2. On the iPhone: Control Center → Screen Mirroring → **Quest**.
+3. Tap the video to show the bar at the bottom: the ⧉ button opens the quick menu (theater mode, auto-detect, CRT, presets), and the slider sets volume. The cube icon next to fullscreen opens theater mode.
+4. **Settings** has Volume, Display and Theater at the top. Logs are a collapsible section. Everything from the original app (receiver name and port, codecs, resolution, audio buffering, developer options) is under **Advanced**.
 
-On devices without a display, settings can also be changed over ADB. The receiver is protected by `android.permission.DUMP` so regular installed apps cannot change them. Values are passed as text using `--es`. Using `adb shell`:
+## Building and installing
+
+### Requirements
+
+- JDK 21, Android SDK platform 37 and build-tools 37.0.0, NDK `27.0.12077973`, CMake 3.22.1 (versions from upstream's CI).
+- **The checkout path must not contain spaces.** FFmpeg's configure step (built from source) rejects them, and Gradle resolves symlinks, so a symlink doesn't help.
+- Submodules: `git submodule update --init --recursive`.
+
+### Signing
+
+Every build is signed with one keystore, kept outside the repo. Android refuses an update signed with a different key, and the fix (uninstalling) wipes settings. `local.properties` (gitignored) points at it:
+
+```properties
+sdk.dir=/Users/<you>/Library/Android/sdk
+storeFile=/Users/<you>/.android/quest-airplay.jks
+storePassword=...
+keyAlias=quest-airplay
+keyPassword=...
+```
+
+### Build, install, run
 
 ```bash
-export KEY="server_name" VALUE="Speaker"
-am broadcast -n io.github.jqssun.airplay/.SettingsReceiver -a io.github.jqssun.airplay.SET_SETTING --es key "$KEY" --es value "$VALUE"
+scripts/quest-install.sh
 ```
 
-To list all settings with their current values as JSON:
+That builds the `quest` flavor for arm64, installs it with `adb install -r`, launches it, and prints any crash. Never uninstall the app: that wipes its settings. By hand:
 
 ```bash
-am start -n io.github.jqssun.airplay/.MainActivity
-am broadcast -n io.github.jqssun.airplay/.SettingsReceiver -a io.github.jqssun.airplay.LIST_SETTINGS
+./gradlew assembleQuestRelease -Pabis=arm64-v8a
+adb install -r app/build/outputs/apk/quest/release/app-quest-release.apk
 ```
 
-## Implementation
-
-This application uses the C-based [UxPlay](https://github.com/FDH2/UxPlay) library to implement the AirPlay/RAOP protocol, with a JNI bridge to the Android application layer. Audio can be decoded via MediaCodec or a software ALAC decoder, while mirroring video is decoded via MediaCodec and rendered to a SurfaceView. HLS sessions are served through a local playlist proxy.
-
-When using USB tethering, the Android device can act as a reliable secondary display over a wired connection. Apple devices natively support USB tethering over CDC-NCM, so on Android devices that default to RNDIS, you may need to switch to CDC-NCM over ADB:
+Unit tests (pure logic: crop geometry, bar detection, preset matching, hysteresis, volume curve, panel choice, theater geometry, `presets.json`):
 
 ```bash
-adb shell settings put global tether_force_usb_functions 1
+./gradlew testQuestDebugUnitTest
 ```
 
-```mermaid
-flowchart LR
-    AppleDevice["Apple Device (Sender)"]
-    UxPlay["UxPlay (C/JNI)<br/>RAOP + mDNS<br/>FairPlay + HLS"]
-    AndroidApp["Android (Receiver)<br/>MediaCodec + AudioTrack<br/>ExoPlayer (HLS)"]
+### Wireless ADB on the Quest
 
-    AppleDevice -- "RAOP / HLS" --> UxPlay
-    UxPlay --> AndroidApp
-```
-
-CMake is used for native C/C++ components under [`app/src/main/cpp`](app/src/main/cpp). Submodules must be initialized before building. 
+Horizon OS has no *Wireless debugging* menu. Once per boot, with a USB cable and Developer Mode on (set in the Meta Horizon phone app):
 
 ```bash
-git submodule update --init --recursive
-./gradlew assembleDebug
+adb tcpip 5555
+adb connect <quest-ip>:5555
 ```
 
-Check out the [CI](https://github.com/jqssun/android-airplay-server/blob/main/.github/workflows/apk.yml) for more details on reproducible builds.
+Accept *Allow USB debugging* in the headset the first time. After that the cable can be unplugged until the Quest restarts.
 
-## Credits
+## How it's built
 
-- [UxPlay](https://github.com/FDH2/UxPlay) for the AirPlay/RAOP server implementation
-- [FFmpeg](https://ffmpeg.org) for the lossless audio decoder
-- [Next Player](https://github.com/anilbeesetti/nextplayer) for the video player
+### Flavors
 
----
+- **`quest`**: the Quest app. `applicationId` `io.github.snowcivilian.questairplay` (installs alongside upstream), minSdk 34, Horizon OS manifest, theater mode, Spatial SDK.
+- **`generic`**: upstream's app, essentially unchanged. Kept as a baseline for comparisons.
 
-Disclaimer: This project is not affiliated with Apple Inc.
+### Video path
+
+Upstream already keeps the AirPlay session in a foreground service and decodes into a GPU texture, so the stream survives surface changes. This fork replaces the final blit with [`QuestFrameRenderer`](app/src/main/kotlin/io/github/snowcivilian/questairplay/video/QuestFrameRenderer.kt), which:
+
+- crops to the active preset and letterboxes it at the preset's aspect,
+- applies the scanline shader,
+- every 400 ms, draws the uncropped frame into a 320×180 buffer and reads it back for auto-detection (on the GL thread, never the decoder thread).
+
+The panel and the theater screen are just different surfaces for the same renderer.
+
+### Code layout
+
+New code lives in new packages so upstream merges stay easy:
+
+| Where | What |
+| --- | --- |
+| `app/src/main/kotlin/io/github/snowcivilian/questairplay/` | `video/` (presets, crop geometry, detection, renderer, delay stats), `audio/` (volume curve), `panel/` (per-aspect panel switching), `theater/` (geometry, launcher), `ui/` (Compose controls and settings), `GameMode.kt` |
+| `app/src/quest/` | Quest manifest, default settings, per-aspect panel activities, `TheaterActivity` (Spatial SDK), string overrides |
+| `app/src/main/assets/presets.json` | System presets (data, not code) |
+| `app/src/test/` | Unit tests for the pure logic |
+
+Upstream files are touched only with small hooks marked `// quest fork`. The hooks are in `Prefs.kt` (new settings), `AirPlayService.kt` (volume, controller init), `VideoPipeline.kt` (renderer), `VideoRenderer.kt` (delay timestamps), `MainActivity.kt` (open class, panel switcher), `MainScreen.kt` and `SettingsScreen.kt` (UI entry points) and `app/build.gradle.kts` (flavors, signing, dependencies).
+
+Settings stay in upstream's single SharedPreferences store, so the in-headset settings and upstream's ADB interface share it:
+
+```bash
+adb shell am broadcast -n io.github.snowcivilian.questairplay/io.github.jqssun.airplay.SettingsReceiver \
+  -a io.github.jqssun.airplay.SET_SETTING --es key app_volume --es value 60
+```
+
+### Tuning presets
+
+If a system crops wrong or isn't auto-detected, turn on *Show stats overlay* and read the **Detected** line (the measured shape of Delta's game box). Put that number in the system's `sourceAspect` in `presets.json`, or set an explicit `crop`. No code change needed.
+
+### Theater mode
+
+[`TheaterActivity`](app/src/quest/kotlin/io/github/snowcivilian/questairplay/theater/TheaterActivity.kt) is the hybrid app's immersive activity (Spatial SDK 0.15.0, following Meta's HybridSample). The screen is a `VideoSurfacePanelRegistration` whose surface goes to the AirPlay service. The controls are a Compose panel using the Interaction SDK grab, handle and resize components. Switching back to the panel goes through Home, as Meta's hybrid guide describes.
+
+## Status
+
+All required milestones (M0–M6, R1–R10) are built and in use. Stretch goals (split DS screens, Pokémon battle helper, extra theater rooms) aren't started. What still needs checking against the spec, and the known issues, are in [docs/TESTING.md](docs/TESTING.md).
+
+## Merging upstream
+
+```bash
+git fetch upstream
+git merge upstream/main
+```
+
+Conflicts should be limited to the `// quest fork` hooks listed above. Merge about once a month, or whenever an iOS update breaks mirroring.
+
+## License and credits
+
+GPL-3.0, like upstream. This is a private build for personal use; if the APK is ever shared, its source must be shared with it.
+
+- [jqssun/android-airplay-server](https://github.com/jqssun/android-airplay-server): the receiver this is built on
+- [UxPlay](https://github.com/FDH2/UxPlay): AirPlay/RAOP implementation
+- [FFmpeg](https://ffmpeg.org): ALAC audio decoding
+- [Meta Spatial SDK](https://developers.meta.com/horizon/documentation/spatial-sdk/): theater mode
+
+Not affiliated with Apple or Meta.
