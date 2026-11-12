@@ -25,12 +25,18 @@ data class BattleCard(
     val demo: Boolean = false,
     /** Abilities the opponent may have. */
     val oppAbilities: List<AbilityInfo> = emptyList(),
+    val oppStatus: Status? = null,
+    val myStatus: Status? = null,
+    /** What the statuses change, one line each. */
+    val oppStatusNotes: List<String> = emptyList(),
+    val myStatusNotes: List<String> = emptyList(),
 )
 
 object BattleCards {
     fun build(
         data: PokeData, phase: BattlePhase, opponent: Side?, player: Side?, wild: Boolean?,
         moves: List<Move>, nicknamePrompt: String?, demo: Boolean = false,
+        oppStatus: Status? = null, myStatus: Status? = null,
     ): BattleCard {
         if (phase == BattlePhase.DOUBLE) return BattleCard(data.gen, phase, null, null, null, emptyMap(), null,
             emptyList(), null, note = "Double battles not supported")
@@ -40,12 +46,16 @@ object BattleCards {
             gen = data.gen, phase = phase, opponent = opponent, player = player, wild = wild,
             opponentProfile = opp?.let { data.chart.defensiveProfile(it.types) } ?: emptyMap(),
             summary = if (opp != null && mine != null) Matchups.summary(data.chart, mine.types, opp.types) else null,
-            moves = if (opp != null) Matchups.moves(data.chart, moves, opp.types) else emptyList(),
+            moves = if (opp != null) Matchups.moves(data.chart, moves, opp.types)
+                .map { it.copy(adjusted = it.multiplier * StatusConditions.attackFactor(myStatus, it.move.category)) } else emptyList(),
             nicknamePrompt = nicknamePrompt, demo = demo,
             oppAbilities = opp?.let { s ->
                 s.abilities.map { AbilityInfo(it, data.abilityText[it], false) } +
                     listOfNotNull(s.hidden?.let { AbilityInfo(it, data.abilityText[it], true) })
             } ?: emptyList(),
+            oppStatus = oppStatus, myStatus = myStatus,
+            oppStatusNotes = oppStatus?.let { StatusConditions.notes(it, data.gen, false, wild, opp?.abilities.orEmpty() + listOfNotNull(opp?.hidden)) }.orEmpty(),
+            myStatusNotes = myStatus?.let { StatusConditions.notes(it, data.gen, true, wild, mine?.abilities.orEmpty() + listOfNotNull(mine?.hidden)) }.orEmpty(),
         )
     }
 }
@@ -65,7 +75,7 @@ object NameReading {
         val words = text.replace('\n', ' ').replace(LEVEL_GLUED, " ").split(' ', '\t')
             // a gender mark before the level belongs to the level ("♂Lv5"); after a name it may be part of it (Nidoran♀)
             .map { it.trim().replace(GENDER_BEFORE_LEVEL, "") }
-            .filter { it.isNotEmpty() && !LEVEL.matches(it) && it != "♂" && it != "♀" }
+            .filter { it.isNotEmpty() && !LEVEL.matches(it) && it != "♂" && it != "♀" && StatusConditions.parse(it) == null }
         if (words.isEmpty()) return emptyList()
         val pairs = words.zipWithNext { a, b -> "$a $b" }
         return (listOf(words.joinToString(" ")) + words.sortedByDescending { it.length } + pairs).distinct()

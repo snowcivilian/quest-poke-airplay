@@ -52,6 +52,7 @@ import io.github.jqssun.airplay.Prefs
 import io.github.snowcivilian.questairplay.pokemon.BattleCard
 import io.github.snowcivilian.questairplay.pokemon.PokeDataRepository
 import io.github.snowcivilian.questairplay.pokemon.PokemonEngine
+import io.github.snowcivilian.questairplay.pokemon.Status
 import io.github.snowcivilian.questairplay.pokemon.PokemonSettings
 import io.github.snowcivilian.questairplay.pokemon.Species
 
@@ -62,7 +63,12 @@ fun PokemonCardOverlay(modifier: Modifier = Modifier) {
     val sprite by PokemonEngine.sprite.collectAsState()
     val on by rememberPref(Prefs.POKEMON_HELPER)
     val left by rememberPref(Prefs.POKEMON_CARD_LEFT)
+    val shown by rememberPref(Prefs.POKEMON_CARD_SHOWN)
+    val window by rememberPref(Prefs.POKEMON_CARD_WINDOW)
     val status by PokemonEngine.status.collectAsState()
+    // hidden from the toolbar, or shown in its own window instead (the sample card still shows here)
+    val elsewhere = !shown || (window && androidx.compose.ui.res.booleanResource(io.github.jqssun.airplay.R.bool.card_window_supported))
+    if (elsewhere && card?.demo != true) return
     // say so on the video when the chosen game can't be read yet, instead of silently doing nothing
     if (on && card == null && status.startsWith("No screen layout")) {
         Box(modifier.padding(8.dp), contentAlignment = if (left) Alignment.TopStart else Alignment.TopEnd) {
@@ -107,7 +113,21 @@ fun TypeChip(type: String) = Text(
         .padding(horizontal = 6.dp, vertical = 2.dp),
 )
 
-private fun mult(m: Float) = when (m) { 0.25f -> "¼×"; 0.5f -> "½×"; 0f -> "0×"; else -> "${m.toInt()}×" }
+private fun mult(m: Float) = when (m) {
+    0.25f -> "¼×"; 0.5f -> "½×"; 0.125f -> "⅛×"; 0f -> "0×"
+    else -> if (m % 1f == 0f) "${m.toInt()}×" else "${m}×"
+}
+
+/** Status badge colours, close to the games'. */
+private val STATUS_COLORS = mapOf(
+    Status.PSN to 0xFFA040A0, Status.PAR to 0xFFB8A038, Status.SLP to 0xFF8C888C, Status.BRN to 0xFFE0602F, Status.FRZ to 0xFF5CB8D8,
+)
+
+@Composable
+fun StatusChip(s: Status) = Text(
+    s.badge, fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color.White,
+    modifier = Modifier.background(Color(STATUS_COLORS.getValue(s)), RoundedCornerShape(6.dp)).padding(horizontal = 6.dp, vertical = 2.dp),
+)
 private fun multColor(m: Float) = when {
     m >= 2f -> Color(0xFF7CFC8A); m == 0f -> Color(0xFF9E9E9E); m < 1f -> Color(0xFFFF8A80); else -> Color.White
 }
@@ -129,7 +149,10 @@ fun BattleCardContent(c: BattleCard, sprite: Bitmap?, modifier: Modifier = Modif
                 Spacer(Modifier.width(8.dp))
             }
             Column {
-                Text(opp?.species?.name ?: opp?.readAs?.let { "$it ?" } ?: "Reading…", style = MaterialTheme.typography.titleMedium)
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text(opp?.species?.name ?: opp?.readAs?.let { "$it ?" } ?: "Reading…", style = MaterialTheme.typography.titleMedium)
+                    c.oppStatus?.let { StatusChip(it) }
+                }
                 opp?.species?.let { s ->
                     Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) { s.types.forEach { TypeChip(it) } }
                     Text(when (c.wild) { true -> "Wild · catch rate ${s.catchRate}"; false -> "Trainer's Pokémon"; null -> "" }, style = small)
@@ -146,6 +169,7 @@ fun BattleCardContent(c: BattleCard, sprite: Bitmap?, modifier: Modifier = Modif
                 }
             }
         }
+        c.oppStatusNotes.forEach { Text("${c.oppStatus!!.label}: $it", style = small, color = Color(0xFFFFD180)) }
         c.summary?.let { s ->
             s.myStrongTypes.forEach { (t, m) -> Text("Your $t hits it ${mult(m)}", style = small, color = multColor(m)) }
             s.theirThreats.forEach { (t, m) -> Text("Its $t hits you ${mult(m)}", style = small, color = Color(0xFFFF8A80)) }
@@ -161,6 +185,10 @@ fun BattleCardContent(c: BattleCard, sprite: Bitmap?, modifier: Modifier = Modif
                     Text(e.move.power?.toString() ?: "—", style = small, modifier = Modifier.width(24.dp))
                     Text(if (e.move.category == "status") "" else mult(e.multiplier), color = multColor(e.multiplier),
                         fontWeight = FontWeight.Bold, modifier = Modifier.width(28.dp))
+                    // after my status (burn halves physical moves): normal → now
+                    if (c.myStatus != null && e.move.category != "status")
+                        Text(if (e.adjusted != e.multiplier) "→ ${mult(e.adjusted)}" else "", color = multColor(e.adjusted),
+                            fontWeight = FontWeight.Bold, modifier = Modifier.width(36.dp))
                 }
             }
         }
@@ -185,7 +213,9 @@ fun BattleCardContent(c: BattleCard, sprite: Bitmap?, modifier: Modifier = Modif
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                     Text("You: ${me.species.name}", style = MaterialTheme.typography.labelLarge)
                     me.species.types.forEach { TypeChip(it) }
+                    c.myStatus?.let { StatusChip(it) }
                 }
+                c.myStatusNotes.forEach { Text("${c.myStatus!!.label}: $it", style = small, color = Color(0xFFFFD180)) }
                 StatsLine("Your base stats", me.species)
             }
         }

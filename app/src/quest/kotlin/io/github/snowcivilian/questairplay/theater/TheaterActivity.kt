@@ -166,8 +166,9 @@ class TheaterActivity : AppSystemActivity() {
             Transform(Pose(Vector3(x, sp.elevationM, z), Quaternion(0f, yaw, 0f))), Visible(false),
             Grabbable(true, GrabbableType.FACE), IsdkPanelDimensions(), IsdkGrabbable(), IsdkPanelGrabHandle())
         scope.launch {
-            kotlinx.coroutines.flow.combine(PokemonEngine.card, prefs.observe { this[Prefs.POKEMON_HELPER] }) { card, on ->
-                card != null && (on || card.demo)
+            kotlinx.coroutines.flow.combine(PokemonEngine.card,
+                prefs.observe { this[Prefs.POKEMON_HELPER] to this[Prefs.POKEMON_CARD_SHOWN] }) { card, (on, shown) ->
+                card != null && (card.demo || (on && shown))
             }
                 .collect { pokemonCard?.setComponent(Visible(it)) }
         }

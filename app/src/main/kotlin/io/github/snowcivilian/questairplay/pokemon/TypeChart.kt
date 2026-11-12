@@ -39,7 +39,8 @@ object Matchups {
         theirs.map { it to chart.multiplier(it, mine) }.filter { it.second >= 2f }.sortedByDescending { it.second },
     )
 
-    data class MoveEffect(val move: Move, val multiplier: Float)
+    /** [adjusted]: damage factor after my status (burn halves physical moves); same as [multiplier] when unaffected. */
+    data class MoveEffect(val move: Move, val multiplier: Float, val adjusted: Float = multiplier)
 
     /** Each of my moves against the opponent; status moves get 1x. */
     fun moves(chart: TypeChart, moves: List<Move>, theirs: List<String>) =

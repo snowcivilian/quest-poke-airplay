@@ -133,6 +133,8 @@ object Prefs {
     val POKEMON_PROFILE = str("pokemon_profile", "frlg")
     val POKEMON_CALIBRATION = bool("pokemon_calibration", false)
     val POKEMON_CARD_LEFT = bool("pokemon_card_left", false)
+    val POKEMON_CARD_SHOWN = bool("pokemon_card_shown", true)
+    val POKEMON_CARD_WINDOW = bool("pokemon_card_window", false)
     // quest fork (R10): theater screen; sizes in cm, curve 0 = flat .. 100 = wrapped around the viewer
     val THEATER_HEIGHT = int("theater_screen_height_cm", 200, 50..1000)
     val THEATER_DISTANCE = int("theater_distance_cm", 350, 100..2000)

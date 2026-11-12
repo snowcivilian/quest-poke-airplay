@@ -36,6 +36,7 @@ object PokemonEngine : GameFrameSink {
     private const val MAX_CAPTURES = 400
     private const val NAMES_EVERY_MS = 2_500L
     private const val MOVES_EVERY_MS = 3_000L
+    private const val STATUS_EVERY_MS = 1_000L
 
     private lateinit var app: Context
     private lateinit var prefs: SharedPreferences
@@ -77,6 +78,9 @@ object PokemonEngine : GameFrameSink {
         var slotsFor: String? = null
         var prompt: String? = null
         var spriteFor: String? = null
+        val oppStatus = StatusDebounce()
+        val myStatus = StatusDebounce()
+        var statusAt = 0L
     }
 
     fun init(ctx: Context, prefs: SharedPreferences, scope: CoroutineScope) {
@@ -128,7 +132,8 @@ object PokemonEngine : GameFrameSink {
             _sprite.value = null
             _card.value = BattleCards.build(data, BattlePhase.IN_BATTLE,
                 Side("PIDGEY", data.speciesNamed("Pidgey")), Side("CHARMANDER", data.speciesNamed("Charmander")),
-                wild = true, moves = moves, nicknamePrompt = null, demo = true)
+                wild = true, moves = moves, nicknamePrompt = null, demo = true,
+                oppStatus = Status.PAR, myStatus = Status.BRN)
             worker.schedule({ if (_card.value?.demo == true) _card.value = null }, 30, TimeUnit.SECONDS)
         }
     }
@@ -235,6 +240,15 @@ object PokemonEngine : GameFrameSink {
                 Log.d(TAG, "moves: $raw -> ${s.slots.map { it?.name }}")
             }
         }
+        if (now - s.statusAt > STATUS_EVERY_MS) {
+            s.statusAt = now
+            val opp = StatusConditions.parse(ocr(f, l.oppStatus ?: l.oppName, 3))
+            val mine = StatusConditions.parse(ocr(f, l.playerStatus ?: l.playerName, 3))
+            val before = s.oppStatus.current to s.myStatus.current
+            s.oppStatus.update(opp); s.myStatus.update(mine)
+            if (before != (s.oppStatus.current to s.myStatus.current))
+                Log.d(TAG, "status: opp=${s.oppStatus.current} mine=${s.myStatus.current}")
+        }
         val oppName = s.opp?.species?.name
         if (oppName != null && s.spriteFor != oppName) {
             s.spriteFor = oppName
@@ -245,7 +259,8 @@ object PokemonEngine : GameFrameSink {
     private fun publish(data: PokeData, s: Session, phase: BattlePhase) {
         _status.value = "In battle" + (s.opp?.species?.let { ": ${it.name}" } ?: "")
         _card.value = BattleCards.build(data, phase, s.opp, s.player, s.wild,
-            if (s.fight) s.moves else emptyList(), s.prompt)
+            if (s.fight) s.moves else emptyList(), s.prompt,
+            oppStatus = s.oppStatus.current, myStatus = s.myStatus.current)
     }
 
     /** Name of a move known only by its type label. */

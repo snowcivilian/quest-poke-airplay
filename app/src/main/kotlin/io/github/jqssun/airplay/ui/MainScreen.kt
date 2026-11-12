@@ -676,6 +676,7 @@ private fun OverviewContent(
                                 tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
                             )
                         }
+                        io.github.snowcivilian.questairplay.ui.PokemonCardButton(MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)) // quest fork (S4)
                         io.github.snowcivilian.questairplay.ui.TheaterButton(MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)) // quest fork
                         IconButton(onClick = onFullscreen, modifier = Modifier.dpadFocus()) {
                             Icon(
@@ -820,6 +821,7 @@ private fun FullscreenVideo(
                         tint = Color.White.copy(alpha = 0.7f)
                     )
                 }
+                io.github.snowcivilian.questairplay.ui.PokemonCardButton(Color.White.copy(alpha = 0.7f)) // quest fork (S4)
                 io.github.snowcivilian.questairplay.ui.TheaterButton(Color.White.copy(alpha = 0.7f)) // quest fork
                 IconButton(onClick = onExitFullscreen, modifier = Modifier.dpadFocus()) {
                     Icon(
