@@ -121,7 +121,7 @@ class TheaterActivity : AppSystemActivity() {
         ComposeViewPanelRegistration(
             R.id.theater_pokemon_card,
             { _, ctx -> ComposeView(ctx).apply { setContent { TheaterPokemonCard() } } },
-            { _ -> UIPanelSettings(shape = QuadShapeOptions(width = 0.42f, height = 0.62f), display = DpPerMeterDisplayOptions()) },
+            { _ -> UIPanelSettings(shape = QuadShapeOptions(width = 0.55f, height = 0.8f), display = DpPerMeterDisplayOptions()) },
         ),
     )
 
@@ -159,12 +159,12 @@ class TheaterActivity : AppSystemActivity() {
     /** S4: battle card floating to the right of the screen, turned toward the viewer; shown only during a battle. */
     private fun spawnPokemonCard() {
         val sp = currentSpec()
-        val x = sp.widthM / 2f + 0.35f
+        val x = sp.widthM / 2f + 0.4f
         val z = sp.distanceM * 0.75f
         val yaw = Math.toDegrees(kotlin.math.atan2(x.toDouble(), z.toDouble())).toFloat()
         pokemonCard = Entity.create(Panel(R.id.theater_pokemon_card),
             Transform(Pose(Vector3(x, sp.elevationM, z), Quaternion(0f, yaw, 0f))), Visible(false),
-            Grabbable(true, GrabbableType.FACE), IsdkPanelDimensions(), IsdkGrabbable(), IsdkPanelGrabHandle())
+            Grabbable(true, GrabbableType.FACE), IsdkPanelDimensions(), IsdkGrabbable(), IsdkPanelGrabHandle(), IsdkPanelResize())
         scope.launch {
             kotlinx.coroutines.flow.combine(PokemonEngine.card,
                 prefs.observe { this[Prefs.POKEMON_HELPER] to this[Prefs.POKEMON_CARD_SHOWN] }) { card, (on, shown) ->

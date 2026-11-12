@@ -43,6 +43,7 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.SpanStyle
@@ -55,6 +56,9 @@ import io.github.snowcivilian.questairplay.pokemon.PokemonEngine
 import io.github.snowcivilian.questairplay.pokemon.Status
 import io.github.snowcivilian.questairplay.pokemon.PokemonSettings
 import io.github.snowcivilian.questairplay.pokemon.Species
+
+/** Room for the video's top-right buttons (48 dp icons + padding), so the card never covers them. */
+private val TOOLBAR_CLEARANCE = 56.dp
 
 /** Panel mode: the battle card floats semi-transparent in a top corner of the video (S4). */
 @Composable
@@ -71,7 +75,7 @@ fun PokemonCardOverlay(modifier: Modifier = Modifier) {
     if (elsewhere && card?.demo != true) return
     // say so on the video when the chosen game can't be read yet, instead of silently doing nothing
     if (on && card == null && status.startsWith("No screen layout")) {
-        Box(modifier.padding(8.dp), contentAlignment = if (left) Alignment.TopStart else Alignment.TopEnd) {
+        Box(modifier.padding(start = 8.dp, end = 8.dp, bottom = 8.dp, top = TOOLBAR_CLEARANCE), contentAlignment = if (left) Alignment.TopStart else Alignment.TopEnd) {
             Surface(color = Color.Black.copy(alpha = 0.6f), contentColor = Color.White, shape = RoundedCornerShape(12.dp)) {
                 Text("Battle helper: $status", fontSize = 12.sp, modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp))
             }
@@ -80,7 +84,7 @@ fun PokemonCardOverlay(modifier: Modifier = Modifier) {
     }
     val c = card ?: return
     if (!on && !c.demo) return
-    Box(modifier.padding(8.dp), contentAlignment = if (left) Alignment.TopStart else Alignment.TopEnd) {
+    Box(modifier.padding(start = 8.dp, end = 8.dp, bottom = 8.dp, top = TOOLBAR_CLEARANCE), contentAlignment = if (left) Alignment.TopStart else Alignment.TopEnd) {
         Surface(color = Color.Black.copy(alpha = 0.75f), contentColor = Color.White, shape = RoundedCornerShape(16.dp),
             modifier = Modifier.widthIn(max = 300.dp)) {
             BattleCardContent(c, sprite, Modifier.padding(12.dp))
@@ -108,7 +112,7 @@ private val TYPE_COLORS = mapOf(
 
 @Composable
 fun TypeChip(type: String) = Text(
-    type.uppercase(), fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color.White,
+    type.uppercase(), fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color.White, softWrap = false,
     modifier = Modifier.background(Color(TYPE_COLORS[type] ?: 0xFF777777), RoundedCornerShape(6.dp))
         .padding(horizontal = 6.dp, vertical = 2.dp),
 )
@@ -125,7 +129,7 @@ private val STATUS_COLORS = mapOf(
 
 @Composable
 fun StatusChip(s: Status) = Text(
-    s.badge, fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color.White,
+    s.badge, fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color.White, softWrap = false,
     modifier = Modifier.background(Color(STATUS_COLORS.getValue(s)), RoundedCornerShape(6.dp)).padding(horizontal = 6.dp, vertical = 2.dp),
 )
 private fun multColor(m: Float) = when {
@@ -178,17 +182,19 @@ fun BattleCardContent(c: BattleCard, sprite: Bitmap?, modifier: Modifier = Modif
         if (c.moves.isNotEmpty()) {
             Text("Your moves", style = MaterialTheme.typography.labelLarge)
             c.moves.forEach { e ->
+                // short columns never wrap; the name takes what's left and ends in … if it must
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Text(e.move.name, style = small, modifier = Modifier.weight(1f))
+                    Text(e.move.name, style = small, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
                     TypeChip(e.move.type)
-                    Text(when (e.move.category) { "physical" -> "Phys"; "special" -> "Spec"; "status" -> "Stat"; else -> "?" }, style = small)
-                    Text(e.move.power?.toString() ?: "—", style = small, modifier = Modifier.width(24.dp))
+                    Text(when (e.move.category) { "physical" -> "Phys"; "special" -> "Spec"; "status" -> "Stat"; else -> "?" },
+                        style = small, softWrap = false)
+                    Text(e.move.power?.toString() ?: "—", style = small, softWrap = false, modifier = Modifier.widthIn(min = 24.dp))
                     Text(if (e.move.category == "status") "" else mult(e.multiplier), color = multColor(e.multiplier),
-                        fontWeight = FontWeight.Bold, modifier = Modifier.width(28.dp))
+                        fontWeight = FontWeight.Bold, softWrap = false, modifier = Modifier.widthIn(min = 28.dp))
                     // after my status (burn halves physical moves): normal → now
                     if (c.myStatus != null && e.move.category != "status")
                         Text(if (e.adjusted != e.multiplier) "→ ${mult(e.adjusted)}" else "", color = multColor(e.adjusted),
-                            fontWeight = FontWeight.Bold, modifier = Modifier.width(36.dp))
+                            fontWeight = FontWeight.Bold, softWrap = false, modifier = Modifier.widthIn(min = 36.dp))
                 }
             }
         }
@@ -210,8 +216,9 @@ fun BattleCardContent(c: BattleCard, sprite: Bitmap?, modifier: Modifier = Modif
         when {
             c.nicknamePrompt != null -> NicknamePrompt(c.nicknamePrompt)
             me?.species != null -> {
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Text("You: ${me.species.name}", style = MaterialTheme.typography.labelLarge)
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalArrangement = Arrangement.spacedBy(4.dp),
+                    itemVerticalAlignment = Alignment.CenterVertically) {
+                    Text("You: ${me.species.name}", style = MaterialTheme.typography.labelLarge, softWrap = false)
                     me.species.types.forEach { TypeChip(it) }
                     c.myStatus?.let { StatusChip(it) }
                 }

@@ -80,14 +80,14 @@ fun PokemonSettingsSection() {
     Text("Card position", Modifier.padding(start = 16.dp, top = 4.dp))
     Row(Modifier.padding(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         val onVideo = !window || !windowSupported
-        FilterChip(selected = onVideo && left, onClick = { Prefs.POKEMON_CARD_WINDOW.write(prefs, false); Prefs.POKEMON_CARD_LEFT.write(prefs, true) },
-            label = { Text("Top left") }, modifier = Modifier.heightIn(min = TARGET))
-        FilterChip(selected = onVideo && !left, onClick = { Prefs.POKEMON_CARD_WINDOW.write(prefs, false); Prefs.POKEMON_CARD_LEFT.write(prefs, false) },
-            label = { Text("Top right") }, modifier = Modifier.heightIn(min = TARGET))
         if (windowSupported) FilterChip(selected = !onVideo, onClick = {
             Prefs.POKEMON_CARD_WINDOW.write(prefs, true); Prefs.POKEMON_CARD_SHOWN.write(prefs, true)
             CardWindow.show(ctx, force = true)
         }, label = { Text("Own window") }, modifier = Modifier.heightIn(min = TARGET))
+        FilterChip(selected = onVideo && left, onClick = { Prefs.POKEMON_CARD_WINDOW.write(prefs, false); Prefs.POKEMON_CARD_LEFT.write(prefs, true) },
+            label = { Text("Top left") }, modifier = Modifier.heightIn(min = TARGET))
+        FilterChip(selected = onVideo && !left, onClick = { Prefs.POKEMON_CARD_WINDOW.write(prefs, false); Prefs.POKEMON_CARD_LEFT.write(prefs, false) },
+            label = { Text("Top right") }, modifier = Modifier.heightIn(min = TARGET))
     }
     Row(Modifier.padding(horizontal = 8.dp), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
         TextButton(onClick = { PokemonEngine.showDemo(ctx) }, modifier = Modifier.heightIn(min = TARGET)) { Text("Show sample card") }
