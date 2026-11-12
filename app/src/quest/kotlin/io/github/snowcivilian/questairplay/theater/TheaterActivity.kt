@@ -13,6 +13,7 @@ import android.view.Surface
 import com.meta.spatial.core.Entity
 import com.meta.spatial.core.Pose
 import com.meta.spatial.core.SpatialFeature
+import com.meta.spatial.core.Vector2
 import com.meta.spatial.core.Vector3
 import com.meta.spatial.runtime.ReferenceSpace
 import com.meta.spatial.toolkit.AppSystemActivity
@@ -36,6 +37,7 @@ import com.meta.spatial.isdk.IsdkGrabbable
 import com.meta.spatial.isdk.IsdkPanelDimensions
 import com.meta.spatial.isdk.IsdkPanelGrabHandle
 import com.meta.spatial.isdk.IsdkPanelResize
+import com.meta.spatial.isdk.ResizeMode
 import com.meta.spatial.toolkit.Visible
 import io.github.snowcivilian.questairplay.pokemon.PokemonEngine
 import io.github.snowcivilian.questairplay.ui.TheaterControlsPanel
@@ -148,13 +150,20 @@ class TheaterActivity : AppSystemActivity() {
         // moving when a toolkit Grabbable is also present (IsdkComponentCreationSystem maps its type).
         val spot = Transform(Pose(Vector3(0f, 0.65f, 0.65f), Quaternion(35f, 0f, 0f)))
         controls = Entity.create(Panel(R.id.theater_controls), spot, Visible(true), Grabbable(true, GrabbableType.FACE),
-            IsdkPanelDimensions(), IsdkGrabbable(), IsdkPanelGrabHandle(), IsdkPanelResize())
+            IsdkPanelDimensions(), IsdkGrabbable(), IsdkPanelGrabHandle(), relayoutResize(Vector2(0.3f, 0.3f), Vector2(1.2f, 1.6f)))
         pill = Entity.create(Panel(R.id.theater_controls_pill), spot, Visible(false), Grabbable(true, GrabbableType.FACE),
             IsdkPanelDimensions(), IsdkGrabbable(), IsdkPanelGrabHandle())
         scope.launch {
             VideoController.displayAspect.collect { rebuildScreen() }
         }
     }
+
+    /**
+     * Resizing changes the panel's size in dp so more of the UI fits (Relayout), instead of the
+     * default (Simple) that scales the whole panel and its text. Limits in meters.
+     */
+    private fun relayoutResize(min: Vector2, max: Vector2) =
+        IsdkPanelResize(resizeMode = ResizeMode.Relayout, minDimensions = min, maxDimensions = max)
 
     /** S4: battle card floating to the right of the screen, turned toward the viewer; shown only during a battle. */
     private fun spawnPokemonCard() {
@@ -164,7 +173,8 @@ class TheaterActivity : AppSystemActivity() {
         val yaw = Math.toDegrees(kotlin.math.atan2(x.toDouble(), z.toDouble())).toFloat()
         pokemonCard = Entity.create(Panel(R.id.theater_pokemon_card),
             Transform(Pose(Vector3(x, sp.elevationM, z), Quaternion(0f, yaw, 0f))), Visible(false),
-            Grabbable(true, GrabbableType.FACE), IsdkPanelDimensions(), IsdkGrabbable(), IsdkPanelGrabHandle(), IsdkPanelResize())
+            Grabbable(true, GrabbableType.FACE), IsdkPanelDimensions(), IsdkGrabbable(), IsdkPanelGrabHandle(),
+            relayoutResize(Vector2(0.35f, 0.4f), Vector2(1.4f, 2.0f)))
         scope.launch {
             kotlinx.coroutines.flow.combine(PokemonEngine.card,
                 prefs.observe { this[Prefs.POKEMON_HELPER] to this[Prefs.POKEMON_CARD_SHOWN] }) { card, (on, shown) ->
