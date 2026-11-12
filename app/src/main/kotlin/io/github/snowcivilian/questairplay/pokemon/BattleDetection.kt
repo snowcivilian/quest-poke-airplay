@@ -16,12 +16,14 @@ data class BattleLayout(
     val oppSprite: NormRect,
     /** HP box background as RGB when it isn't light (DPPt boxes are dark grey); null = light. */
     val boxColor: IntArray? = null,
+    /** Type label of each move slot, read when the move name won't read (DS games show one). */
+    val moveTypes: List<NormRect> = emptyList(),
 ) {
     /** For the calibration overlay. */
     fun named(): List<Pair<String, NormRect>> = listOf(
         "opp HP" to oppHpBar, "player HP" to playerHpBar, "opp name" to oppName, "player name" to playerName,
         "text" to textBox, "fight info" to fightInfo, "sprite" to oppSprite,
-    ) + moveSlots.mapIndexed { i, r -> "move ${i + 1}" to r }
+    ) + moveSlots.mapIndexed { i, r -> "move ${i + 1}" to r } + moveTypes.mapIndexed { i, r -> "type ${i + 1}" to r }
 
     companion object {
         private fun JSONArray.rect() = NormRect(getDouble(0).toFloat(), getDouble(1).toFloat(), getDouble(2).toFloat(), getDouble(3).toFloat())
@@ -33,6 +35,7 @@ data class BattleLayout(
             o.getJSONArray("moveSlots").let { a -> (0 until a.length()).map { a.getJSONArray(it).rect() } },
             o.getJSONArray("oppSprite").rect(),
             o.optJSONArray("boxColor")?.let { a -> IntArray(3) { a.getInt(it) } },
+            o.optJSONArray("moveTypes")?.let { a -> (0 until a.length()).map { a.getJSONArray(it).rect() } } ?: emptyList(),
         )
     }
 }

@@ -68,8 +68,11 @@ object PokemonEngine : GameFrameSink {
         var movesAt = 0L
         var fight = false
         var fightChecks = 0
-        /** Last good read per move slot; one bad OCR read doesn't wipe it. */
-        val slots = arrayOfNulls<Move>(4)
+        /** Move names read per slot, counted; the most-read one is shown, so one bad read can't win. */
+        val votes = Array(4) { mutableMapOf<Move, Int>() }
+        /** Type-label fallback per slot, for names that don't read at all. */
+        val typeOnly = arrayOfNulls<Move>(4)
+        val slots get() = votes.mapIndexed { i, v -> v.maxByOrNull { it.value }?.key ?: typeOnly[i] }
         val moves get() = slots.filterNotNull()
         var slotsFor: String? = null
         var prompt: String? = null
@@ -209,8 +212,8 @@ object PokemonEngine : GameFrameSink {
             s.fight = "PP" in info || "TYPE" in info
             // a different Pokémon of mine has different moves
             val mine = s.player?.let { it.species?.name ?: it.readAs }
-            if (mine != s.slotsFor) { s.slotsFor = mine; s.slots.fill(null) }
-            if (s.fight && (s.slots.any { it == null } || now - s.movesAt > MOVES_EVERY_MS)) {
+            if (mine != s.slotsFor) { s.slotsFor = mine; s.votes.forEach { it.clear() }; s.typeOnly.fill(null) }
+            if (s.fight && (s.votes.any { it.isEmpty() } || now - s.movesAt > MOVES_EVERY_MS)) {
                 s.movesAt = now
                 val raw = l.moveSlots.take(4).mapIndexed { i, r ->
                     // pixel fonts read differently at different sizes; first version that names a real move wins
@@ -219,7 +222,13 @@ object PokemonEngine : GameFrameSink {
                         val text = ocr(f, r, scale, ink).replace('\n', ' ')
                         tried += "$label:$text "
                         val m = NameReading.match(data.moveMatcher, text)?.let { data.moveNamed(it.name) } ?: continue
-                        s.slots[i] = m; tried = "$label:$text"; break
+                        s.votes[i].merge(m, 1, Int::plus); tried = "$label:$text"; break
+                    }
+                    if (s.votes[i].isEmpty() && s.typeOnly[i] == null) l.moveTypes.getOrNull(i)?.let { r ->
+                        val t = ocr(f, r, 3).trim()
+                        tried += " type:$t"
+                        data.chart.types.firstOrNull { NameMatcher.normalize(it) == NameMatcher.normalize(t) }
+                            ?.let { s.typeOnly[i] = Move(UNREAD_MOVE, it, "unknown", null) }
                     }
                     tried.trim()
                 }
@@ -238,6 +247,9 @@ object PokemonEngine : GameFrameSink {
         _card.value = BattleCards.build(data, phase, s.opp, s.player, s.wild,
             if (s.fight) s.moves else emptyList(), s.prompt)
     }
+
+    /** Name of a move known only by its type label. */
+    const val UNREAD_MOVE = "Unreadable move"
 
     /** Move-name OCR attempts: label, scale, black-on-white. */
     private val MOVE_READS = listOf(Triple("x2", 2, false), Triple("x3", 3, false), Triple("ink", 3, true))

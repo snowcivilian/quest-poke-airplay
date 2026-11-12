@@ -4,12 +4,12 @@
     "system: which presets show this profile (gba, ds). defaultGen: gen3 | gen4 | gen5 | latest; the user's",
     "choice is saved per profile. layout: screen regions as fractions of the cropped game frame (HP boxes,",
     "name fields, battle text box, move slots, opponent sprite area), named in layouts. null = not tuned yet.",
-    "boxColor (optional): HP box background RGB when it is not light."
+    "boxColor (optional): HP box background RGB when it is not light. moveTypes (optional): each move slot's type label, read when the name won't."
   ],
   "version": 2,
   "layouts": {
     "gba": {"_note": "Best estimate from the 240x160 FRLG/RSE battle screen; not yet tuned against captures.", "oppHpBar": [0.17, 0.175, 0.46, 0.27], "playerHpBar": [0.645, 0.54, 0.94, 0.61], "oppName": [0.07, 0.1, 0.37, 0.19], "playerName": [0.57, 0.465, 0.86, 0.555], "textBox": [0.02, 0.71, 0.98, 0.99], "fightInfo": [0.67, 0.71, 0.99, 0.99], "moveSlots": [[0.03, 0.72, 0.33, 0.84], [0.33, 0.72, 0.66, 0.84], [0.03, 0.84, 0.33, 0.96], [0.33, 0.84, 0.66, 0.96]], "oppSprite": [0.58, 0.04, 0.89, 0.46]},
-    "ds_gen4": {"_note": "Measured from a Platinum FIGHT-menu capture (DS stacked, top screen = upper half). HGSS shares the engine; check with calibration.", "boxColor": [104, 113, 86], "oppHpBar": [0.17, 0.10, 0.45, 0.13], "playerHpBar": [0.72, 0.30, 0.99, 0.325], "oppName": [0.0, 0.06, 0.42, 0.105], "playerName": [0.58, 0.255, 0.99, 0.30], "textBox": [0.02, 0.385, 0.92, 0.49], "fightInfo": [0.2, 0.635, 0.97, 0.685], "moveSlots": [[0.06, 0.595, 0.45, 0.645], [0.55, 0.595, 0.96, 0.645], [0.06, 0.765, 0.45, 0.815], [0.55, 0.765, 0.96, 0.815]], "oppSprite": [0.62, 0.08, 0.95, 0.25]}
+    "ds_gen4": {"_note": "Measured from a Platinum FIGHT-menu capture (DS stacked, top screen = upper half). HGSS shares the engine; check with calibration.", "boxColor": [104, 113, 86], "oppHpBar": [0.17, 0.10, 0.45, 0.13], "playerHpBar": [0.72, 0.30, 0.99, 0.325], "oppName": [0.0, 0.06, 0.42, 0.105], "playerName": [0.58, 0.255, 0.99, 0.30], "textBox": [0.02, 0.385, 0.92, 0.49], "fightInfo": [0.2, 0.635, 0.97, 0.685], "moveSlots": [[0.06, 0.595, 0.45, 0.645], [0.55, 0.595, 0.96, 0.645], [0.06, 0.765, 0.45, 0.815], [0.55, 0.765, 0.96, 0.815]], "moveTypes": [[0.06, 0.64, 0.20, 0.68], [0.555, 0.64, 0.70, 0.68], [0.06, 0.807, 0.20, 0.847], [0.555, 0.807, 0.70, 0.847]], "oppSprite": [0.62, 0.08, 0.95, 0.25]}
   },
   "profiles": [
     { "id": "frlg",          "label": "FireRed / LeafGreen",        "system": "gba", "defaultGen": "gen3", "layout": "gba" },

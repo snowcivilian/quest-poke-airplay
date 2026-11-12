@@ -154,7 +154,7 @@ fun BattleCardContent(c: BattleCard, sprite: Bitmap?, modifier: Modifier = Modif
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     Text(e.move.name, style = small, modifier = Modifier.weight(1f))
                     TypeChip(e.move.type)
-                    Text(when (e.move.category) { "physical" -> "Phys"; "special" -> "Spec"; else -> "Stat" }, style = small)
+                    Text(when (e.move.category) { "physical" -> "Phys"; "special" -> "Spec"; "status" -> "Stat"; else -> "?" }, style = small)
                     Text(e.move.power?.toString() ?: "—", style = small, modifier = Modifier.width(24.dp))
                     Text(if (e.move.category == "status") "" else mult(e.multiplier), color = multColor(e.multiplier),
                         fontWeight = FontWeight.Bold, modifier = Modifier.width(28.dp))
