@@ -20,6 +20,9 @@ data class RenderConfig(
     val scanlineCount: Int = 0,
     /** Whether the renderer should sample frames for auto-detection. */
     val detect: Boolean = false,
+    /** S1: second output (the DS bottom screen) crop and aspect, or null when not split. */
+    val secondaryCrop: NormRect? = null,
+    val secondaryAspect: Float = 4f / 3f,
 )
 
 /**
@@ -53,6 +56,22 @@ object VideoController {
     @Volatile var lastMatch: String? = null; private set
 
     @Volatile private var scanIntensity = 0f
+
+    /** S1: theater asks for split DS screens; effective only when the active preset can split. */
+    @Volatile private var theaterSplit = false
+    private val _splitActive = MutableStateFlow(false)
+    val splitActive: StateFlow<Boolean> = _splitActive.asStateFlow()
+
+    /** S1: surface for the second output (DS bottom screen), drawn by the GL thread. */
+    @Volatile var secondarySurface: android.view.Surface? = null; private set
+
+    fun setSecondarySurface(s: android.view.Surface?) { secondarySurface = s }
+
+    @Synchronized
+    fun setTheaterSplit(on: Boolean) {
+        theaterSplit = on
+        _recompute()
+    }
 
     /** S4: crop of the whole game (both DS screens even when split) for frame captures. */
     val gameCrop: NormRect
@@ -139,9 +158,16 @@ object VideoController {
         val p = _active.value
         val fw = frameW; val fh = frameH
         val crop = if (fw > 0 && fh > 0) p.cropFor(fw, fh) else NormRect.FULL
-        val aspect = if (fw > 0 && fh > 0) p.outputAspect(crop, fw, fh) else (p.displayAspect ?: 16f / 9f)
+        var aspect = if (fw > 0 && fh > 0) p.outputAspect(crop, fw, fh) else (p.displayAspect ?: 16f / 9f)
         val lines = if (p.nativeH > 0) p.nativeH else DEFAULT_LINES
-        config = RenderConfig(crop, aspect, scanIntensity, lines, detect = _auto.value)
+        val split = theaterSplit && p.canSplit
+        _splitActive.value = split
+        config = if (split) {
+            aspect = p.splitAspect ?: (4f / 3f)
+            // each DS screen has half the native lines
+            RenderConfig(Geometry.sub(crop, p.splitTop!!), aspect, scanIntensity, lines / 2, detect = _auto.value,
+                secondaryCrop = Geometry.sub(crop, p.splitBottom!!), secondaryAspect = aspect)
+        } else RenderConfig(crop, aspect, scanIntensity, lines, detect = _auto.value)
         _displayAspect.value = aspect
     }
 }

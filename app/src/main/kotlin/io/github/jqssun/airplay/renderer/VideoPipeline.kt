@@ -150,6 +150,7 @@ class VideoPipeline {
     private fun _render() {
         quest.draw(oesTex, texMatrix, winW, winH, videoW, videoH)
         egl?.swap(window)
+        egl?.let { quest.drawSecondary(it, window, oesTex, texMatrix, videoW, videoH) }
         io.github.snowcivilian.questairplay.video.LatencyStats.onDisplayed()
     }
 
@@ -216,6 +217,7 @@ class VideoPipeline {
     }
 
     private fun _releaseGl() {
+        egl?.let { quest.releaseSecondary(it) }
         quest.release()
         surfaceTexture?.release()
         surfaceTexture = null
