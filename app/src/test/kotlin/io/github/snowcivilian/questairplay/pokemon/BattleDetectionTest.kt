@@ -34,9 +34,35 @@ class BattleDetectionTest {
         return GameFrame(px, w, h)
     }
 
-    @Test fun gbaProfilesHaveALayoutDsNotYet() {
+    @Test fun gen4HasALayoutGen5NotYet() {
         assertNotNull(profiles.first { it.id == "rse" }.layout)
-        assertNull(profiles.first { it.id == "hgss" }.layout)
+        assertNotNull(profiles.first { it.id == "dppt" }.layout)
+        assertNotNull(profiles.first { it.id == "hgss" }.layout)
+        assertNull(profiles.first { it.id == "bw" }.layout)
+    }
+
+    /** A real Platinum capture from the headset (FIGHT menu open, Sceptile vs Staravia). */
+    private fun platinum(): GameFrame {
+        val img = javax.imageio.ImageIO.read(javaClass.getResourceAsStream("/pokemon/platinum_fight.png"))
+        val px = ByteArray(img.width * img.height * 4)
+        for (y in 0 until img.height) for (x in 0 until img.width) {
+            val c = img.getRGB(x, y); val i = (y * img.width + x) * 4
+            px[i] = (c shr 16).toByte(); px[i + 1] = (c shr 8).toByte(); px[i + 2] = c.toByte(); px[i + 3] = -1
+        }
+        return GameFrame(px, img.width, img.height)
+    }
+
+    @Test fun realPlatinumBattleIsDetected() {
+        val l = profiles.first { it.id == "dppt" }.layout!!
+        val o = BattleDetector.observe(platinum(), l)
+        assertTrue(o.oppBox && o.playerBox); assertEquals(1, o.oppBars)
+    }
+
+    @Test fun platinumBoxesNeedTheirColourNotJustHpBars() {
+        // the same frame with the GBA rule (light boxes only) is not a battle: the box colour matters
+        val l = profiles.first { it.id == "dppt" }.layout!!.copy(boxColor = null)
+        val o = BattleDetector.observe(platinum(), l)
+        assertTrue(!o.oppBox && !o.playerBox)
     }
 
     @Test fun hpColoursAreRecognised() {

@@ -59,6 +59,16 @@ fun PokemonCardOverlay(modifier: Modifier = Modifier) {
     val sprite by PokemonEngine.sprite.collectAsState()
     val on by rememberPref(Prefs.POKEMON_HELPER)
     val left by rememberPref(Prefs.POKEMON_CARD_LEFT)
+    val status by PokemonEngine.status.collectAsState()
+    // say so on the video when the chosen game can't be read yet, instead of silently doing nothing
+    if (on && card == null && status.startsWith("No screen layout")) {
+        Box(modifier.padding(8.dp), contentAlignment = if (left) Alignment.TopStart else Alignment.TopEnd) {
+            Surface(color = Color.Black.copy(alpha = 0.6f), contentColor = Color.White, shape = RoundedCornerShape(12.dp)) {
+                Text("Battle helper: $status", fontSize = 12.sp, modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp))
+            }
+        }
+        return
+    }
     val c = card ?: return
     if (!on && !c.demo) return
     Box(modifier.padding(8.dp), contentAlignment = if (left) Alignment.TopStart else Alignment.TopEnd) {

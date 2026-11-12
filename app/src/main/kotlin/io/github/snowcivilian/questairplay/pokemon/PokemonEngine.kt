@@ -47,6 +47,7 @@ object PokemonEngine : GameFrameSink {
     private var lastCaptureMs = 0L
     private var reader: TextReader? = null
     private val tracker = BattleTracker()
+    private var lastObs: Observation? = null
     private var session: Session? = null
 
     private val _card = MutableStateFlow<BattleCard?>(null)
@@ -149,7 +150,9 @@ object PokemonEngine : GameFrameSink {
         val profile = PokemonSettings.profile(app, prefs)
         val layout = profile.layout ?: run { _status.value = "No screen layout for ${profile.label} yet"; return }
         val data = PokeDataRepository.get(app, PokemonSettings.generation(prefs, profile))
-        val phase = tracker.update(BattleDetector.observe(f, layout))
+        val obs = BattleDetector.observe(f, layout)
+        if (obs != lastObs) { lastObs = obs; Log.d(TAG, "seen: $obs (${profile.id})") }
+        val phase = tracker.update(obs)
         when (phase) {
             BattlePhase.IDLE -> _status.value = "Waiting for a battle"
             BattlePhase.OVER -> {

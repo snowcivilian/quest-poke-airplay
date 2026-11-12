@@ -14,6 +14,8 @@ data class BattleLayout(
     val fightInfo: NormRect,
     val moveSlots: List<NormRect>,
     val oppSprite: NormRect,
+    /** HP box background as RGB when it isn't light (DPPt boxes are dark grey); null = light. */
+    val boxColor: IntArray? = null,
 ) {
     /** For the calibration overlay. */
     fun named(): List<Pair<String, NormRect>> = listOf(
@@ -30,6 +32,7 @@ data class BattleLayout(
             o.getJSONArray("textBox").rect(), o.getJSONArray("fightInfo").rect(),
             o.getJSONArray("moveSlots").let { a -> (0 until a.length()).map { a.getJSONArray(it).rect() } },
             o.getJSONArray("oppSprite").rect(),
+            o.optJSONArray("boxColor")?.let { a -> IntArray(3) { a.getInt(it) } },
         )
     }
 }
@@ -57,7 +60,7 @@ data class Observation(
 
 /**
  * Battle detection from colour alone, cheap enough for 3 frames a second: both HP areas must show
- * an HP bar (green, yellow or red fill) on the HP box's light background. Pure.
+ * an HP bar (green, yellow or red fill) next to the HP box's background colour. Pure.
  */
 object BattleDetector {
     /** HP fill colours (green, yellow, red), tolerant of video compression. */
@@ -103,22 +106,31 @@ object BattleDetector {
         return bars
     }
 
-    /** Share of light pixels; the HP box background is light in every supported game. */
-    fun lightFraction(f: GameFrame, region: NormRect): Float {
+    /** Near a box colour, with room for video compression (sum of channel differences). */
+    fun isNear(r: Int, g: Int, b: Int, c: IntArray) =
+        kotlin.math.abs(r - c[0]) + kotlin.math.abs(g - c[1]) + kotlin.math.abs(b - c[2]) <= 60
+
+    /**
+     * Share of HP box background pixels in a region: light (GBA), or near [boxColor] when the
+     * layout gives one (Platinum's dark grey boxes).
+     */
+    fun boxFraction(f: GameFrame, region: NormRect, boxColor: IntArray? = null): Float {
         val b = f.bounds(region)
-        var n = 0; var light = 0
+        var n = 0; var hit = 0
         for (y in b[1] until b[3]) for (x in b[0] until b[2]) {
-            n++; if (isLight(f.r(x, y), f.g(x, y), f.b(x, y))) light++
+            n++
+            val r = f.r(x, y); val g = f.g(x, y); val bl = f.b(x, y)
+            if (isLight(r, g, bl) || (boxColor != null && isNear(r, g, bl, boxColor))) hit++
         }
-        return if (n == 0) 0f else light.toFloat() / n
+        return if (n == 0) 0f else hit.toFloat() / n
     }
 
     fun observe(f: GameFrame, l: BattleLayout): Observation {
         val oppBars = hpBars(f, l.oppHpBar)
         val playerBars = hpBars(f, l.playerHpBar)
         return Observation(
-            oppBox = oppBars > 0 && lightFraction(f, l.oppName) > 0.3f,
-            playerBox = playerBars > 0 && lightFraction(f, l.playerName) > 0.3f,
+            oppBox = oppBars > 0 && boxFraction(f, l.oppName, l.boxColor) > 0.3f,
+            playerBox = playerBars > 0 && boxFraction(f, l.playerName, l.boxColor) > 0.3f,
             oppBars = oppBars,
         )
     }
