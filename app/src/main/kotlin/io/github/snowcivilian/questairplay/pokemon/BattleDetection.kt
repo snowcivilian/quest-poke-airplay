@@ -21,6 +21,10 @@ data class BattleLayout(
     /** Status badge spots; null = the badge shows inside the name area (Gen 3 replaces the level with it). */
     val oppStatus: NormRect? = null,
     val playerStatus: NormRect? = null,
+    /** The battle screen, read whole for names, badges and messages; the whole frame unless given (DS: the top screen). */
+    val topScreen: NormRect = NormRect(0f, 0f, 1f, 1f),
+    /** DS: the touch screen, where the switch and learn-move screens show. */
+    val bottomScreen: NormRect? = null,
 ) {
     /** For the calibration overlay. */
     fun named(): List<Pair<String, NormRect>> = listOf(
@@ -41,6 +45,7 @@ data class BattleLayout(
             o.optJSONArray("boxColor")?.let { a -> IntArray(3) { a.getInt(it) } },
             o.optJSONArray("moveTypes")?.let { a -> (0 until a.length()).map { a.getJSONArray(it).rect() } } ?: emptyList(),
             o.optJSONArray("oppStatus")?.rect(), o.optJSONArray("playerStatus")?.rect(),
+            o.optJSONArray("topScreen")?.rect() ?: NormRect(0f, 0f, 1f, 1f), o.optJSONArray("bottomScreen")?.rect(),
         )
     }
 }

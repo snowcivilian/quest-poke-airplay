@@ -33,10 +33,17 @@ object PokemonEngine : GameFrameSink {
     private const val TAG = "PokemonHelper"
     private const val FRAME_INTERVAL_NS = 330_000_000L
     private const val CAPTURE_INTERVAL_MS = 2_000L
-    private const val MAX_CAPTURES = 400
+    private const val MAX_CAPTURES = 600
     private const val NAMES_EVERY_MS = 2_500L
     private const val MOVES_EVERY_MS = 3_000L
     private const val STATUS_EVERY_MS = 1_000L
+    /** Whole-screen reads: every second in a battle; between battles, often enough to catch ones the colour check misses. */
+    private const val SCENE_EVERY_MS = 1_000L
+    private const val IDLE_SCENE_EVERY_MS = 1_500L
+    /** After a battle my side stays up this long, longer while a move is being learned. */
+    private const val AFTER_BATTLE_MS = 20_000L
+    private const val LEARN_SHOW_MS = 15_000L
+    private const val RECORD_INTERVAL_MS = 1_000L
 
     private lateinit var app: Context
     private lateinit var prefs: SharedPreferences
@@ -44,6 +51,12 @@ object PokemonEngine : GameFrameSink {
     private val busy = AtomicBoolean(false)
     @Volatile private var enabled = false
     @Volatile private var calibrating = false
+    @Volatile private var recording = false
+    private var lastScene: BattleScene? = null
+    private var lastSceneAt = 0L
+    private var lastSceneLog = ""
+    private var lastRecordMs = 0L
+    private var lastRecordThumb: IntArray? = null
     @Volatile private var lastFrameNs = 0L
     private var lastCaptureMs = 0L
     private var reader: TextReader? = null
@@ -81,12 +94,30 @@ object PokemonEngine : GameFrameSink {
         val oppStatus = StatusDebounce()
         val myStatus = StatusDebounce()
         var statusAt = 0L
+        // double battles: the second opponent and my second Pokémon
+        var double = false
+        var opp2: Side? = null
+        var partner: Side? = null
+        val opp2Status = StatusDebounce()
+        // switch screen
+        var bottomAt = 0L
+        var party: List<PartyRead> = emptyList()
+        var partyMisses = 0
+        // a move being learned, and the moves it would replace (read off the learn screen)
+        var learning: Move? = null
+        var learningAt = 0L
+        var learnKnown: List<Move> = emptyList()
+        /** Set when the battle ends: my side stays on the card until then. */
+        var afterUntil = 0L
     }
 
     fun init(ctx: Context, prefs: SharedPreferences, scope: CoroutineScope) {
         if (::app.isInitialized) return
         app = ctx.applicationContext
         this.prefs = prefs
+        scope.launch {
+            prefs.observe { this[Prefs.POKEMON_RECORD] }.collect { recording = it }
+        }
         scope.launch {
             prefs.observe { this[Prefs.POKEMON_HELPER] to this[Prefs.POKEMON_CALIBRATION] }.collect { (on, cal) ->
                 enabled = on; calibrating = cal
@@ -119,7 +150,27 @@ object PokemonEngine : GameFrameSink {
             val r = runCatching { OcrSelfTest.run(reader()) }.getOrElse { "failed: ${it.javaClass.simpleName}: ${it.message}" }
             Log.i(TAG, "OCR self-test: $r")
             _ocrTest.value = r
+            runCatching { sceneSelfTest() }.onFailure { Log.w(TAG, "scene self-test failed", it) }
         }
+    }
+
+    /** Reads the newest saved frame for this game the way a battle is read, and logs what it found. */
+    private fun sceneSelfTest() {
+        val profile = PokemonSettings.profile(app, prefs)
+        val layout = profile.layout ?: return
+        val file = capturesDir(app, profile.id).listFiles { f -> f.name.endsWith(".png") }?.maxByOrNull { it.name.removePrefix("battle-") } ?: return
+        val bmp = android.graphics.BitmapFactory.decodeFile(file.path) ?: return
+        val buf = ByteBuffer.allocate(bmp.width * bmp.height * 4)
+        bmp.copy(Bitmap.Config.ARGB_8888, false).copyPixelsToBuffer(buf)
+        val f = GameFrame(buf.array(), bmp.width, bmp.height)
+        val data = PokeDataRepository.get(app, PokemonSettings.generation(prefs, profile))
+        val t0 = System.nanoTime()
+        val scene = readScene(f, layout, data, profile)
+        val ms = (System.nanoTime() - t0) / 1_000_000
+        val party = layout.bottomScreen?.let { SceneReading.party(readLines(f, it), data) { n -> Nicknames.lookup(prefs, profile.id, n) } }
+        Log.i(TAG, "scene self-test on ${file.name} (${ms} ms): battle=${SceneReading.looksLikeBattle(scene)} " +
+            "opp=${scene.opp.map { "${it.name}/${it.species?.name}/${it.status}" }} mine=${scene.mine.map { "${it.name}/${it.species?.name}/${it.status}" }} " +
+            "msg=\"${scene.message}\" party=${party?.map { it.name }}")
     }
 
     /** A sample card so the layout can be seen without a battle; clears after 30 s. */
@@ -133,7 +184,9 @@ object PokemonEngine : GameFrameSink {
             _card.value = BattleCards.build(data, BattlePhase.IN_BATTLE,
                 Side("PIDGEY", data.speciesNamed("Pidgey")), Side("CHARMANDER", data.speciesNamed("Charmander")),
                 wild = true, moves = moves, nicknamePrompt = null, demo = true,
-                oppStatus = Status.PAR, myStatus = Status.BRN)
+                oppStatus = Status.PAR, myStatus = Status.BRN,
+                party = listOf("Squirtle", "Pikachu", "Geodude").map { PartyRead(it, data.speciesNamed(it)) },
+                learning = data.moveNamed("Metal Claw"), knownMoves = moves)
             worker.schedule({ if (_card.value?.demo == true) _card.value = null }, 30, TimeUnit.SECONDS)
         }
     }
@@ -161,31 +214,85 @@ object PokemonEngine : GameFrameSink {
         val profile = PokemonSettings.profile(app, prefs)
         val layout = profile.layout ?: run { _status.value = "No screen layout for ${profile.label} yet"; return }
         val data = PokeDataRepository.get(app, PokemonSettings.generation(prefs, profile))
-        val obs = BattleDetector.observe(f, layout)
-        if (obs != lastObs) { lastObs = obs; Log.d(TAG, "seen: $obs (${profile.id})") }
+        val now = System.currentTimeMillis()
+        if (recording && session != null) recordIfChanged(f, now)
+        // whole-screen read: names by position, badges, the message box (and doubles the colour check can miss)
+        if (now - lastSceneAt > if (session != null) SCENE_EVERY_MS else IDLE_SCENE_EVERY_MS) {
+            lastSceneAt = now
+            lastScene = readScene(f, layout, data, profile)
+        }
+        val scene = lastScene?.takeIf { now - lastSceneAt < 2_000 }
+        val colour = BattleDetector.observe(f, layout)
+        val obs = if (scene != null && SceneReading.looksLikeBattle(scene))
+            colour.copy(oppBox = true, playerBox = true, oppBars = maxOf(colour.oppBars, scene.opp.size)) else colour
+        if (obs != lastObs) { lastObs = obs; Log.d(TAG, "seen: $obs colour=$colour (${profile.id})") }
         val phase = tracker.update(obs)
+        val s0 = session
         when (phase) {
-            BattlePhase.IDLE -> _status.value = "Waiting for a battle"
-            BattlePhase.OVER -> {
-                Log.i(TAG, "battle over")
-                session = null; _sprite.value = null
-                if (_card.value?.demo != true) _card.value = null
+            BattlePhase.IDLE -> if (s0 != null && s0.afterUntil > now) {
+                afterBattle(f, layout, data, s0, scene, now)
+            } else {
+                if (s0 != null) { Log.i(TAG, "card cleared"); endSession() }
+                _status.value = "Waiting for a battle"
             }
-            BattlePhase.DOUBLE -> {
-                _status.value = "Double battle"
-                _card.value = BattleCards.build(data, phase, null, null, null, emptyList(), null)
+            BattlePhase.OVER -> s0?.let {
+                Log.i(TAG, "battle over; keeping my side")
+                it.afterUntil = now + AFTER_BATTLE_MS
+                afterBattle(f, layout, data, it, scene, now)
             }
-            BattlePhase.IN_BATTLE -> {
-                val s = session ?: Session().also { session = it; Log.i(TAG, "battle started") }
-                read(f, layout, data, profile, s)
-                publish(data, s, phase)
+            BattlePhase.IN_BATTLE, BattlePhase.DOUBLE -> {
+                val s = s0?.takeIf { it.afterUntil == 0L } ?: Session().also { n ->
+                    // a new battle: my Pokémon and its moves carry over, nothing about the opponent does
+                    s0?.let { old -> n.player = old.player; n.slotsFor = old.slotsFor; old.votes.forEachIndexed { i, v -> n.votes[i].putAll(v) } }
+                    session = n; Log.i(TAG, "battle started")
+                }
+                if (phase == BattlePhase.DOUBLE && !s.double) { s.double = true; Log.i(TAG, "double battle") }
+                read(f, layout, data, profile, s, scene, now)
+                publish(data, s, phase, now)
             }
         }
     }
 
-    private fun read(f: GameFrame, l: BattleLayout, data: PokeData, profile: GameProfile, s: Session) {
-        val now = System.currentTimeMillis()
-        if (s.opp?.species == null || s.player == null || now - s.namesAt > NAMES_EVERY_MS) {
+    private fun endSession() {
+        session = null; _sprite.value = null
+        if (_card.value?.demo != true) _card.value = null
+    }
+
+    /** Battle over: keep my Pokémon on the card, and watch for "wants to learn X". */
+    private fun afterBattle(f: GameFrame, l: BattleLayout, data: PokeData, s: Session, scene: BattleScene?, now: Long) {
+        scene?.let { learnFrom(it, data, s, now) }
+        if (s.learning != null && now - s.learningAt < LEARN_SHOW_MS) {
+            s.afterUntil = maxOf(s.afterUntil, s.learningAt + LEARN_SHOW_MS)
+            readLearnScreen(f, l, data, s, now)
+        }
+        _status.value = "Battle over"
+        publish(data, s, BattlePhase.IN_BATTLE, now, after = true)
+    }
+
+    private fun learnFrom(scene: BattleScene, data: PokeData, s: Session, now: Long) {
+        SceneReading.learning(scene.message, data)?.let {
+            if (s.learning != it) Log.i(TAG, "learning ${it.name}")
+            s.learning = it; s.learningAt = now
+        }
+    }
+
+    /** The learn screen lists the moves it knows: read them off the bottom screen (or the whole screen). */
+    private fun readLearnScreen(f: GameFrame, l: BattleLayout, data: PokeData, s: Session, now: Long) {
+        if (now - s.bottomAt < SCENE_EVERY_MS) return
+        s.bottomAt = now
+        val lines = readLines(f, l.bottomScreen ?: l.topScreen)
+        val known = lines.mapNotNull { NameReading.match(data.moveMatcher, it.text)?.let { m -> data.moveNamed(m.name) } }
+            .distinct().filter { it != s.learning }
+        if (known.size >= 2) s.learnKnown = known.take(4)
+    }
+
+    private fun read(f: GameFrame, l: BattleLayout, data: PokeData, profile: GameProfile, s: Session, scene: BattleScene?, now: Long) {
+        scene?.let { sc ->
+            learnFrom(sc, data, s, now)
+            if (s.wild == null) wildFrom(sc.message)?.let { s.wild = it }
+            if (s.double) applyDouble(sc, data, profile, s)
+        }
+        if (!s.double && (s.opp?.species == null || s.player == null || now - s.namesAt > NAMES_EVERY_MS)) {
             s.namesAt = now
             val oppText = ocr(f, l.oppName)
             NameReading.match(data.speciesMatcher, oppText)?.let { m ->
@@ -207,9 +314,7 @@ object PokemonEngine : GameFrameSink {
         }
         if (s.wild == null && s.textChecks < 8) {
             s.textChecks++
-            val t = ocr(f, l.textBox).uppercase()
-            if ("WILD" in t) s.wild = true
-            else if ("WOULD LIKE TO BATTLE" in t || "WANTS TO BATTLE" in t || "SENT OUT" in t || "CHALLENGED" in t) s.wild = false
+            wildFrom(ocr(f, l.textBox))?.let { s.wild = it }
         }
         // FIGHT menu: the move info box shows "PP" and "TYPE"; checked every other frame
         if (++s.fightChecks % 2 == 0) {
@@ -242,25 +347,103 @@ object PokemonEngine : GameFrameSink {
         }
         if (now - s.statusAt > STATUS_EVERY_MS) {
             s.statusAt = now
-            val opp = StatusConditions.parse(ocr(f, l.oppStatus ?: l.oppName, 3))
-            val mine = StatusConditions.parse(ocr(f, l.playerStatus ?: l.playerName, 3))
-            val before = s.oppStatus.current to s.myStatus.current
+            // badge found anywhere in the name box by the whole-screen read; else the box's badge spot
+            val sceneOpp = scene?.opp?.firstOrNull()?.status
+            val sceneMine = scene?.mine?.firstOrNull { it.name == s.player?.readAs }?.status ?: scene?.mine?.firstOrNull()?.status
+            val opp = sceneOpp ?: if (s.double) null else StatusConditions.parse(ocr(f, l.oppStatus ?: l.oppName, 3))
+            val mine = sceneMine ?: if (s.double) null else StatusConditions.parse(ocr(f, l.playerStatus ?: l.playerName, 3))
+            val before = Triple(s.oppStatus.current, s.myStatus.current, s.opp2Status.current)
             s.oppStatus.update(opp); s.myStatus.update(mine)
-            if (before != (s.oppStatus.current to s.myStatus.current))
-                Log.d(TAG, "status: opp=${s.oppStatus.current} mine=${s.myStatus.current}")
+            if (s.double) s.opp2Status.update(scene?.opp?.getOrNull(1)?.status)
+            if (before != Triple(s.oppStatus.current, s.myStatus.current, s.opp2Status.current))
+                Log.d(TAG, "status: opp=${s.oppStatus.current} mine=${s.myStatus.current} opp2=${s.opp2Status.current}")
         }
+        // switch screen: my party's names on the bottom screen (outside the FIGHT menu)
+        if (!s.fight && now - s.bottomAt > SCENE_EVERY_MS) {
+            s.bottomAt = now
+            val lines = l.bottomScreen?.let { readLines(f, it) } ?: emptyList()
+            val party = SceneReading.party(lines, data) { Nicknames.lookup(prefs, profile.id, it) }
+            if (party.isNotEmpty()) {
+                if (party.map { it.name } != s.party.map { it.name }) Log.d(TAG, "party: ${party.map { "${it.name}->${it.species?.name}" }}")
+                s.party = party; s.partyMisses = 0
+            } else if (s.party.isNotEmpty() && ++s.partyMisses >= 2) s.party = emptyList()
+        }
+        if (s.learning != null && now - s.learningAt < LEARN_SHOW_MS) readLearnScreen(f, l, data, s, now)
         val oppName = s.opp?.species?.name
-        if (oppName != null && s.spriteFor != oppName) {
+        if (s.double) _sprite.value = null
+        else if (oppName != null && s.spriteFor != oppName) {
             s.spriteFor = oppName
             _sprite.value = crop(f, l.oppSprite, 1)
         }
     }
 
-    private fun publish(data: PokeData, s: Session, phase: BattlePhase) {
-        _status.value = "In battle" + (s.opp?.species?.let { ": ${it.name}" } ?: "")
-        _card.value = BattleCards.build(data, phase, s.opp, s.player, s.wild,
-            if (s.fight) s.moves else emptyList(), s.prompt,
-            oppStatus = s.oppStatus.current, myStatus = s.myStatus.current)
+    private fun publish(data: PokeData, s: Session, phase: BattlePhase, now: Long = System.currentTimeMillis(), after: Boolean = false) {
+        if (!after) _status.value = (if (s.double) "Double battle" else "In battle") +
+            (listOfNotNull(s.opp?.species?.name, s.opp2?.species?.name).takeIf { it.isNotEmpty() }?.joinToString(" & ", ": ") ?: "")
+        val learning = s.learning?.takeIf { now - s.learningAt < LEARN_SHOW_MS }
+        _card.value = BattleCards.build(data, if (s.double) BattlePhase.DOUBLE else phase,
+            if (after) null else s.opp, s.player, s.wild,
+            if (s.fight && !after) s.moves else emptyList(), s.prompt,
+            oppStatus = if (after) null else s.oppStatus.current, myStatus = s.myStatus.current,
+            opponent2 = if (after || !s.double) null else s.opp2, opp2Status = s.opp2Status.current,
+            partner = if (s.double) s.partner else null,
+            party = if (after) emptyList() else s.party,
+            learning = learning, knownMoves = s.learnKnown.ifEmpty { s.moves.filter { it.name != UNREAD_MOVE } },
+            afterBattle = after)
+    }
+
+    private fun wildFrom(text: String): Boolean? {
+        val t = text.uppercase()
+        return when {
+            "WILD" in t -> true
+            "WOULD LIKE TO BATTLE" in t || "WANTS TO BATTLE" in t || "SENT OUT" in t || "CHALLENGED" in t -> false
+            else -> null
+        }
+    }
+
+    private val CHOOSER = Regex("what\\s+will\\s+(.+?)\\s+do", RegexOption.IGNORE_CASE)
+
+    /** Doubles: both opponents and both of mine from the whole-screen read; mine in the FIGHT menu is the one asked "What will X do?". */
+    private fun applyDouble(sc: BattleScene, data: PokeData, profile: GameProfile, s: Session) {
+        fun side(b: BoxRead, old: Side?) = if (b.species == null && old?.species != null && old.readAs == b.name) old else Side(b.name, b.species)
+        sc.opp.getOrNull(0)?.let { s.opp = side(it, s.opp) }
+        sc.opp.getOrNull(1)?.let { s.opp2 = side(it, s.opp2) }
+        if (sc.mine.isEmpty()) return
+        val chooser = CHOOSER.find(sc.message)?.groupValues?.get(1)?.let { c -> NameReading.candidates(c).firstOrNull() }
+        val active = sc.mine.firstOrNull { b -> chooser != null && NameMatcher.normalize(b.name) == NameMatcher.normalize(chooser) }
+            ?: sc.mine.firstOrNull { it.name == s.player?.readAs } ?: sc.mine.first()
+        s.player = side(active, s.player)
+        s.prompt = if (s.player?.species == null) s.player?.readAs else null
+        s.partner = sc.mine.firstOrNull { it !== active }?.let { side(it, s.partner) }
+    }
+
+    /** OCR a whole screen into positioned lines, scaled so text is big enough to read. */
+    private fun readLines(f: GameFrame, r: NormRect): List<TextLine> {
+        val h = (r.height * f.height).toInt().coerceAtLeast(1)
+        return runCatching { reader().lines(crop(f, r, (768 / h).coerceIn(1, 3))) }
+            .onFailure { Log.w(TAG, "OCR failed", it) }.getOrDefault(emptyList())
+    }
+
+    private fun readScene(f: GameFrame, l: BattleLayout, data: PokeData, profile: GameProfile): BattleScene {
+        val top = l.topScreen
+        val messageTop = ((l.textBox.top - top.top) / top.height).coerceIn(0f, 1f)
+        val scene = SceneReading.battle(readLines(f, top), data, { Nicknames.lookup(prefs, profile.id, it) }, messageTop)
+        val log = "opp=${scene.opp.map { "${it.name}/${it.species?.name}/${it.status}" }} mine=${scene.mine.map { "${it.name}/${it.species?.name}/${it.status}" }} msg=\"${scene.message}\""
+        if (log != lastSceneLog) { lastSceneLog = log; Log.d(TAG, "scene: $log") }
+        return scene
+    }
+
+    /** Tuning recorder: a frame whenever the picture changes (at most 1 a second) during and just after battles. */
+    private fun recordIfChanged(f: GameFrame, now: Long) {
+        if (now - lastRecordMs < RECORD_INTERVAL_MS) return
+        val thumb = IntArray(16 * 24) { i ->
+            val x = (i % 16) * f.width / 16; val y = (i / 16) * f.height / 24
+            (f.r(x, y) + f.g(x, y) + f.b(x, y)) / 3
+        }
+        val prev = lastRecordThumb
+        if (prev != null && thumb.indices.sumOf { kotlin.math.abs(thumb[it] - prev[it]) } / thumb.size < 6) return
+        lastRecordThumb = thumb; lastRecordMs = now
+        writeFrame(f, now, "battle-")
     }
 
     /** Name of a move known only by its type label. */
@@ -300,12 +483,16 @@ object PokemonEngine : GameFrameSink {
         val now = System.currentTimeMillis()
         if (now - lastCaptureMs < CAPTURE_INTERVAL_MS) return
         lastCaptureMs = now
+        writeFrame(f, now, "")
+    }
+
+    private fun writeFrame(f: GameFrame, now: Long, prefix: String) {
         val dir = capturesDir(app, PokemonSettings.profile(app, prefs).id)
         val bmp = Bitmap.createBitmap(f.width, f.height, Bitmap.Config.ARGB_8888)
         bmp.copyPixelsFromBuffer(ByteBuffer.wrap(f.rgba))
-        val name = SimpleDateFormat("yyyyMMdd-HHmmss-SSS", Locale.US).format(Date(now)) + ".png"
+        val name = prefix + SimpleDateFormat("yyyyMMdd-HHmmss-SSS", Locale.US).format(Date(now)) + ".png"
         File(dir, name).outputStream().use { bmp.compress(Bitmap.CompressFormat.PNG, 100, it) }
-        dir.listFiles()?.sortedBy { it.name }?.dropLast(MAX_CAPTURES)?.forEach { it.delete() }
+        dir.listFiles()?.sortedBy { it.name.removePrefix("battle-") }?.dropLast(MAX_CAPTURES)?.forEach { it.delete() }
     }
 
     fun capturesDir(ctx: Context, profile: String): File =

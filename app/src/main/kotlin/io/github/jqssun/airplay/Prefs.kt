@@ -132,6 +132,8 @@ object Prefs {
     val POKEMON_HELPER = bool("pokemon_helper", false)
     val POKEMON_PROFILE = str("pokemon_profile", "frlg")
     val POKEMON_CALIBRATION = bool("pokemon_calibration", false)
+    /** Saves a frame whenever the picture changes during battles, for tuning; no overlay. */
+    val POKEMON_RECORD = bool("pokemon_record_frames", false)
     val POKEMON_CARD_LEFT = bool("pokemon_card_left", false)
     val POKEMON_CARD_SHOWN = bool("pokemon_card_shown", true)
     // own window by default; only on Horizon OS (R.bool.card_window_supported), elsewhere the card stays on the video

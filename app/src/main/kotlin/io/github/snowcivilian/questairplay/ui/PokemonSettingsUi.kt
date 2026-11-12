@@ -73,6 +73,7 @@ fun PokemonSettingsSection() {
     val shown by rememberPref(Prefs.POKEMON_CARD_SHOWN)
     val windowSupported = androidx.compose.ui.res.booleanResource(io.github.jqssun.airplay.R.bool.card_window_supported)
     val calibration by rememberPref(Prefs.POKEMON_CALIBRATION)
+    val record by rememberPref(Prefs.POKEMON_RECORD)
     Text("Status: $status" + (selected.layout?.let { "" } ?: " (no screen layout for this game yet)"),
         style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp))
     SettingToggle("Show battle card", "Also on the toolbar (the Poké Ball beside theater and fullscreen).", shown,
@@ -96,6 +97,8 @@ fun PokemonSettingsSection() {
     ocr?.let { Text("Text reading: $it", style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(horizontal = 16.dp)) }
     SettingToggle("Calibration mode", "Draws this game's screen regions over the video and saves a frame every 2 s to " +
         PokemonEngine.capturesDir(ctx, selected.id).absolutePath, calibration, prefSetter(Prefs.POKEMON_CALIBRATION))
+    SettingToggle("Save battle frames", "For tuning: saves a frame whenever the picture changes during and just after battles " +
+        "(newest 600 kept), with no boxes drawn. Turn on when something isn't read right.", record, prefSetter(Prefs.POKEMON_RECORD))
     NicknameList(selected)
 }
 

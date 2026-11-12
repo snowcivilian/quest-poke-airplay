@@ -39,8 +39,20 @@ object Matchups {
         theirs.map { it to chart.multiplier(it, mine) }.filter { it.second >= 2f }.sortedByDescending { it.second },
     )
 
-    /** [adjusted]: damage factor after my status (burn halves physical moves); same as [multiplier] when unaffected. */
-    data class MoveEffect(val move: Move, val multiplier: Float, val adjusted: Float = multiplier)
+    /**
+     * [adjusted]: damage factor after my status (burn halves physical moves); same as [multiplier]
+     * when unaffected. [vsSecond]: adjusted factor against the second opponent in a double battle.
+     */
+    data class MoveEffect(val move: Move, val multiplier: Float, val adjusted: Float = multiplier, val vsSecond: Float? = null)
+
+    /** A party Pokémon against one opponent: its best type's hit, and the opponent's best hit on it. */
+    data class PartyMatch(val opponent: String, val bestHit: Pair<String, Float>, val worstTaken: Pair<String, Float>)
+
+    fun party(chart: TypeChart, mine: List<String>, opponent: Species) = PartyMatch(
+        opponent.name,
+        mine.map { it to chart.multiplier(it, opponent.types) }.maxBy { it.second },
+        opponent.types.map { it to chart.multiplier(it, mine) }.maxBy { it.second },
+    )
 
     /** Each of my moves against the opponent; status moves get 1x. */
     fun moves(chart: TypeChart, moves: List<Move>, theirs: List<String>) =
