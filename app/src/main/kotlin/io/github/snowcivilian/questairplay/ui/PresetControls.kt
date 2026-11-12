@@ -56,6 +56,8 @@ fun PresetMenuButton(tint: Color = Color.Unspecified) {
     val auto by VideoController.auto.collectAsState()
     val crt by rememberPref(Prefs.CRT_ENABLED)
     val setCrt = prefSetter(Prefs.CRT_ENABLED)
+    val pokemon by rememberPref(Prefs.POKEMON_HELPER)
+    val setPokemon = prefSetter(Prefs.POKEMON_HELPER)
     var open by remember { mutableStateOf(false) }
     Box {
         IconButton(onClick = { open = true }, modifier = Modifier.size(TARGET)) {
@@ -71,6 +73,7 @@ fun PresetMenuButton(tint: Color = Color.Unspecified) {
             if (TheaterLauncher.available(ctx)) item("Theater mode", false) { (ctx as? Activity)?.let(TheaterLauncher::enter) }
             item("Auto-detect system", auto) { VideoController.setAuto(ctx.questPrefs(), !auto) }
             item("CRT scanlines", crt) { setCrt(!crt) }
+            item("Pokémon battle helper", pokemon) { setPokemon(!pokemon) }
             HorizontalDivider()
             VideoController.presets.forEach { p ->
                 item(p.label, !auto && p.id == active.id) { VideoController.select(ctx.questPrefs(), p.id) }

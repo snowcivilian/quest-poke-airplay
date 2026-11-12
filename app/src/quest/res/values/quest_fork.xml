@@ -4,4 +4,6 @@
     <bool name="show_pip_button">false</bool>
     <!-- logs live in Settings on Quest -->
     <bool name="show_logs_tab">false</bool>
+    <!-- battle card in its own panel (S4) -->
+    <bool name="card_window_supported">true</bool>
 </resources>

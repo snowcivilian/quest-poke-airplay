@@ -80,6 +80,7 @@ class QuestFrameRenderer {
     fun draw(oesTex: Int, texMatrix: FloatArray, winW: Int, winH: Int, frameW: Int, frameH: Int) {
         val cfg = VideoController.renderConfig(frameW, frameH)
         if (cfg.detect) _detect(oesTex, texMatrix, frameW, frameH)
+        GameFrameTap.shared.maybeCapture(this, oesTex, texMatrix) // S4
         GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, 0)
         GLES20.glViewport(0, 0, winW, winH)
         GLES20.glClearColor(0f, 0f, 0f, 1f)
@@ -150,6 +151,7 @@ class QuestFrameRenderer {
 
     fun release() {
         if (program != 0) GLES20.glDeleteProgram(program)
+        GameFrameTap.shared.release()
         if (fbo != 0) GLES20.glDeleteFramebuffers(1, intArrayOf(fbo), 0)
         if (fboTex != 0) GLES20.glDeleteTextures(1, intArrayOf(fboTex), 0)
         fbo = 0; fboTex = 0

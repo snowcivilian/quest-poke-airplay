@@ -89,6 +89,7 @@ fun QuestSettings(viewModel: MainViewModel) {
     VolumeSettings()
     DisplaySettings()
     TheaterSettings()
+    PokemonSettingsSection()
     LogsSection(viewModel)
 }
 

@@ -338,6 +338,7 @@ class AirPlayService : LifecycleService(), RaopCallbackHandler, LogListener {
         }
         io.github.snowcivilian.questairplay.video.VideoController.init(this, prefs, lifecycleScope) // quest fork
         io.github.snowcivilian.questairplay.GameMode.init(prefs, lifecycleScope) // quest fork (R7)
+        io.github.snowcivilian.questairplay.pokemon.PokemonEngine.init(this, prefs, lifecycleScope) // quest fork (S4)
         lifecycleScope.launch {
             prefs.observe {
                 Triple(this[Prefs.APP_VOLUME], this[Prefs.APP_MUTE], this[Prefs.IGNORE_SENDER_VOLUME])

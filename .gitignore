@@ -10,3 +10,5 @@
 .cxx/
 
 *.jks
+# quest fork: PokeAPI CSV download cache
+tools/pokedata/.cache/

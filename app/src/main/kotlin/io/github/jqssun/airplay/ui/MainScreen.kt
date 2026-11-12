@@ -110,11 +110,14 @@ fun MainScreen(
     val video: @Composable () -> Unit = {
         // quest fork: size the surface to the cropped preset, not the raw stream
         val aspect by io.github.snowcivilian.questairplay.video.VideoController.displayAspect.collectAsState()
-        VideoSurfaceView(
-            onSurfaceAvailable = onSurfaceAvailable,
-            onSurfaceDestroyed = onSurfaceDestroyed,
-            aspectRatio = aspect
-        )
+        androidx.compose.foundation.layout.Box(contentAlignment = Alignment.Center) { // quest fork (S4): calibration overlay
+            VideoSurfaceView(
+                onSurfaceAvailable = onSurfaceAvailable,
+                onSurfaceDestroyed = onSurfaceDestroyed,
+                aspectRatio = aspect
+            )
+            io.github.snowcivilian.questairplay.ui.CalibrationOverlay(aspect)
+        }
     }
 
     // fullscreen only once mirroring reports a size: connections rise before the kind is known
@@ -673,6 +676,7 @@ private fun OverviewContent(
                                 tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
                             )
                         }
+                        io.github.snowcivilian.questairplay.ui.PokemonCardButton(MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)) // quest fork (S4)
                         io.github.snowcivilian.questairplay.ui.TheaterButton(MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)) // quest fork
                         IconButton(onClick = onFullscreen, modifier = Modifier.dpadFocus()) {
                             Icon(
@@ -685,6 +689,7 @@ private fun OverviewContent(
             }
             if (state == ServerState.RUNNING && mirroringActive && !showAudioMode) { // quest fork (R4)
                 io.github.snowcivilian.questairplay.ui.VolumeOverlay(viewModel, Modifier.align(Alignment.BottomCenter).padding(8.dp))
+                io.github.snowcivilian.questairplay.ui.PokemonCardOverlay(Modifier.matchParentSize()) // quest fork (S4)
             }
             if (debugEnabled && connections > 0) {
                 DebugOverlay(debugInfo, Modifier.align(Alignment.TopStart).padding(8.dp))
@@ -816,6 +821,7 @@ private fun FullscreenVideo(
                         tint = Color.White.copy(alpha = 0.7f)
                     )
                 }
+                io.github.snowcivilian.questairplay.ui.PokemonCardButton(Color.White.copy(alpha = 0.7f)) // quest fork (S4)
                 io.github.snowcivilian.questairplay.ui.TheaterButton(Color.White.copy(alpha = 0.7f)) // quest fork
                 IconButton(onClick = onExitFullscreen, modifier = Modifier.dpadFocus()) {
                     Icon(
@@ -830,6 +836,7 @@ private fun FullscreenVideo(
             visible = controlsVisible,
             modifier = Modifier.align(Alignment.BottomCenter).padding(12.dp)
         ) { io.github.snowcivilian.questairplay.ui.VolumeOverlay(viewModel) }
+        io.github.snowcivilian.questairplay.ui.PokemonCardOverlay(Modifier.matchParentSize()) // quest fork (S4)
         if (debugEnabled) {
             DebugOverlay(debugInfo, Modifier.align(Alignment.TopStart).padding(8.dp))
         }

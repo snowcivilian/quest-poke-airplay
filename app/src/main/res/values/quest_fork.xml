@@ -3,4 +3,6 @@
 <resources>
     <bool name="show_pip_button">true</bool>
     <bool name="show_logs_tab">true</bool>
+    <!-- battle card in its own window (S4): Horizon OS panels only -->
+    <bool name="card_window_supported">false</bool>
 </resources>

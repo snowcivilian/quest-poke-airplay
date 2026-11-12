@@ -35,6 +35,8 @@ import io.github.jqssun.airplay.ui.theme.AirPlayTheme
 @Composable
 fun TheaterControlsPanel(onBack: () -> Unit, onMinimize: () -> Unit) = AirPlayTheme(darkTheme = true) {
     val crt by rememberPref(Prefs.CRT_ENABLED)
+    val helper by rememberPref(Prefs.POKEMON_HELPER)
+    val card by rememberPref(Prefs.POKEMON_CARD_SHOWN)
     Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.surface) {
         Column(Modifier.verticalScroll(rememberScrollState()).padding(vertical = 8.dp)) {
             Row(Modifier.fillMaxWidth().padding(start = 16.dp, end = 4.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -49,6 +51,10 @@ fun TheaterControlsPanel(onBack: () -> Unit, onMinimize: () -> Unit) = AirPlayTh
             SectionTitle("Picture")
             SettingToggle("CRT scanlines", null, crt, prefSetter(Prefs.CRT_ENABLED))
             if (crt) IntSlider("Intensity", Prefs.CRT_INTENSITY, 0, 100, "%", live = true)
+            if (helper) {
+                SectionTitle("Pokémon")
+                SettingToggle("Battle card", "Beside the screen during battles", card, prefSetter(Prefs.POKEMON_CARD_SHOWN))
+            }
             SectionTitle("Screen")
             TheaterScreenSettings()
             Text(

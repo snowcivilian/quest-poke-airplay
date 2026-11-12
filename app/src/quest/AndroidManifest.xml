@@ -62,6 +62,22 @@
             </intent-filter>
         </activity>
 
+        <!-- S4: the battle card's own panel. singleInstance + own affinity: relaunching brings the same window back. -->
+        <activity
+            android:name="io.github.snowcivilian.questairplay.ui.CardWindowActivity"
+            android:exported="false"
+            android:label="Battle card"
+            android:launchMode="singleInstance"
+            android:taskAffinity="${applicationId}.card"
+            android:excludeFromRecents="true"
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboardHidden">
+            <layout
+                android:defaultWidth="420dp"
+                android:defaultHeight="680dp"
+                android:minWidth="300dp"
+                android:minHeight="320dp" />
+        </activity>
+
         <!-- Per-aspect panels (R5). Horizon OS has no runtime panel resize, so PanelSwitcher relaunches into these. -->
         <activity
             android:name="io.github.snowcivilian.questairplay.panel.Panel4x3Activity"
