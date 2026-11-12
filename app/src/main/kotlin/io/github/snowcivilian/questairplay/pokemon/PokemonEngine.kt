@@ -213,11 +213,17 @@ object PokemonEngine : GameFrameSink {
             if (s.fight && (s.slots.any { it == null } || now - s.movesAt > MOVES_EVERY_MS)) {
                 s.movesAt = now
                 val raw = l.moveSlots.take(4).mapIndexed { i, r ->
-                    val text = ocr(f, r, ink = true)
-                    NameReading.match(data.moveMatcher, text)?.let { data.moveNamed(it.name) }?.let { s.slots[i] = it }
-                    text.replace('\n', ' ')
+                    // pixel fonts read differently at different sizes; first version that names a real move wins
+                    var tried = ""
+                    for ((label, scale, ink) in MOVE_READS) {
+                        val text = ocr(f, r, scale, ink).replace('\n', ' ')
+                        tried += "$label:$text "
+                        val m = NameReading.match(data.moveMatcher, text)?.let { data.moveNamed(it.name) } ?: continue
+                        s.slots[i] = m; tried = "$label:$text"; break
+                    }
+                    tried.trim()
                 }
-                Log.d(TAG, "moves: read=$raw -> ${s.slots.map { it?.name }}")
+                Log.d(TAG, "moves: $raw -> ${s.slots.map { it?.name }}")
             }
         }
         val oppName = s.opp?.species?.name
@@ -233,12 +239,15 @@ object PokemonEngine : GameFrameSink {
             if (s.fight) s.moves else emptyList(), s.prompt)
     }
 
+    /** Move-name OCR attempts: label, scale, black-on-white. */
+    private val MOVE_READS = listOf(Triple("x2", 2, false), Triple("x3", 3, false), Triple("ink", 3, true))
+
     /**
-     * OCR a region: crop, scale 2x without smoothing, read. [ink] turns it into black text on white
-     * first (Platinum's outlined move font reads far better that way).
+     * OCR a region: crop, scale without smoothing, read. [ink] turns it into black text on white
+     * with a margin first.
      */
-    private fun ocr(f: GameFrame, r: NormRect, ink: Boolean = false): String =
-        runCatching { reader().read(crop(f, r, 2, ink)) }.onFailure { Log.w(TAG, "OCR failed", it) }.getOrDefault("")
+    private fun ocr(f: GameFrame, r: NormRect, scale: Int = 2, ink: Boolean = false): String =
+        runCatching { reader().read(crop(f, r, scale, ink)) }.onFailure { Log.w(TAG, "OCR failed", it) }.getOrDefault("")
 
     private fun crop(f: GameFrame, r: NormRect, scale: Int, ink: Boolean = false): Bitmap {
         val b = f.bounds(r)
@@ -251,7 +260,12 @@ object PokemonEngine : GameFrameSink {
                 else (0xFF shl 24) or (red shl 16) or (g shl 8) or bl
         }
         val bmp = Bitmap.createBitmap(px, w, h, Bitmap.Config.ARGB_8888)
-        return if (scale == 1) bmp else Bitmap.createScaledBitmap(bmp, w * scale, h * scale, false)
+        val scaled = if (scale == 1) bmp else Bitmap.createScaledBitmap(bmp, w * scale, h * scale, false)
+        if (!ink) return scaled
+        val pad = 12 * scale
+        return Bitmap.createBitmap(scaled.width + 2 * pad, scaled.height + 2 * pad, Bitmap.Config.ARGB_8888).also {
+            android.graphics.Canvas(it).apply { drawColor(android.graphics.Color.WHITE); drawBitmap(scaled, pad.toFloat(), pad.toFloat(), null) }
+        }
     }
 
     /** Calibration: a PNG of the cropped game every 2 s, newest 400 kept. Pull with adb. */
