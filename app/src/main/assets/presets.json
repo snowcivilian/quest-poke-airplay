@@ -5,7 +5,9 @@
     "  (square pixels). Used to crop and to auto-detect the system. Tune from the debug overlay's 'detected' line.",
     "displayAspect: aspect ratio of the panel / output, e.g. 4:3 for TV systems (pixel-aspect correction).",
     "crop: optional explicit crop [left, top, right, bottom] as fractions of the frame; overrides the centered fit.",
-    "native: native resolution, used for scanline count. detect: whether auto-detection may pick this preset."
+    "native: native resolution, used for scanline count. detect: whether auto-detection may pick this preset.",
+    "split (S1): optional top and bottom screen rects [left, top, right, bottom] as fractions of the cropped game,",
+    "  with splitAspect, used to show the two DS screens separately in theater mode."
   ],
   "version": 1,
   "presets": [
@@ -17,7 +19,8 @@
     { "id": "gb",         "label": "Game Boy / Color",         "native": [160, 144], "displayAspect": [10, 9], "detect": true },
     { "id": "gba",        "label": "GBA",                      "native": [240, 160], "displayAspect": [3, 2],  "detect": true },
     { "id": "ds_top",     "label": "DS, top screen only",      "native": [256, 192], "displayAspect": [4, 3],  "detect": false },
-    { "id": "ds_stacked", "label": "DS, both screens stacked", "native": [256, 384], "displayAspect": [2, 3],  "detect": true },
+    { "id": "ds_stacked", "label": "DS, both screens stacked", "native": [256, 384], "displayAspect": [2, 3],  "detect": true,
+      "split": { "top": [0, 0, 1, 0.5], "bottom": [0, 0.5, 1, 1] }, "splitAspect": [4, 3] },
     { "id": "genesis",    "label": "Genesis / Mega Drive",     "native": [320, 224], "displayAspect": [4, 3],  "detect": true }
   ]
 }

@@ -43,6 +43,14 @@ object Geometry {
         return Viewport(x, winH - yTop - h, w, h)
     }
 
+    /** [inner], given as fractions of [outer], expressed as fractions of the whole frame. */
+    fun sub(outer: NormRect, inner: NormRect): NormRect = NormRect(
+        outer.left + inner.left * outer.width,
+        outer.top + inner.top * outer.height,
+        outer.left + inner.right * outer.width,
+        outer.top + inner.bottom * outer.height,
+    )
+
     /** Distance between two aspect ratios on a log scale, so 4:3 vs 3:4 errors are symmetric. */
     fun aspectDistance(a: Float, b: Float): Float = abs(ln(a / b))
 }

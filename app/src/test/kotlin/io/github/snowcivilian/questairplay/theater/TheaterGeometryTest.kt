@@ -33,6 +33,25 @@ class TheaterGeometryTest {
         assertEquals(0, s.pixelH % 2); assertEquals(1728, s.pixelH)
     }
 
+    @Test fun dsPairIsCenteredOnElevation() {
+        val top = TheaterGeometry.screen(4f / 3, 100, 300, 150, 0)
+        val l = TheaterGeometry.dsLayout(top, 60)
+        assertEquals(0.6f, l.bottom.heightM, 1e-4f)
+        assertEquals(0.8f, l.bottom.widthM, 1e-3f)
+        // pair spans topY+0.5 down to bottomY-0.3; its middle is the elevation
+        val middle = ((l.topCenterY + 0.5f) + (l.bottomCenterY - 0.3f)) / 2f
+        assertEquals(1.5f, middle, 1e-4f)
+        assertEquals(l.topCenterY - 0.5f - TheaterGeometry.DS_GAP_M - 0.3f, l.bottomCenterY, 1e-4f)
+        assertEquals(2.55f, l.bottomZ, 1e-4f)
+        assertEquals(25f, l.bottomTiltDeg, 0f)
+    }
+
+    @Test fun dsPairIsLiftedOffTheFloor() {
+        val top = TheaterGeometry.screen(4f / 3, 300, 400, 100, 0)
+        val l = TheaterGeometry.dsLayout(top, 100)
+        assertEquals(0.1f, l.bottomCenterY - l.bottom.heightM / 2f, 1e-4f)
+    }
+
     @Test fun badAspectFallsBackToSixteenNine() =
         assertEquals(1080, TheaterGeometry.screen(Float.NaN, 200, 350, 130, 0).pixelH)
 }

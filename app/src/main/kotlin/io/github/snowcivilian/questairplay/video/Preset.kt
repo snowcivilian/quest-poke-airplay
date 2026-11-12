@@ -19,7 +19,13 @@ data class Preset(
     val nativeW: Int,
     val nativeH: Int,
     val detect: Boolean,
+    /** S1: top and bottom screen rects within the crop, for split DS screens in theater mode. */
+    val splitTop: NormRect? = null,
+    val splitBottom: NormRect? = null,
+    val splitAspect: Float? = null,
 ) {
+    val canSplit get() = splitTop != null && splitBottom != null
+
     val isFull get() = sourceAspect == null && crop == null
 
     /** Crop for a frame of the given size when nothing better (a detection) is known. */
@@ -41,7 +47,10 @@ data class Preset(
         private fun JSONObject.ratio(key: String): Float? =
             optJSONArray(key)?.let { it.getDouble(0).toFloat() / it.getDouble(1).toFloat() }
 
+        private fun JSONArray.rect() = NormRect(getDouble(0).toFloat(), getDouble(1).toFloat(), getDouble(2).toFloat(), getDouble(3).toFloat())
+
         private fun parse(o: JSONObject): Preset {
+            val split = o.optJSONObject("split")
             val native = o.optJSONArray("native")
             val nw = native?.getInt(0) ?: 0
             val nh = native?.getInt(1) ?: 0
@@ -58,6 +67,9 @@ data class Preset(
                 nativeW = nw,
                 nativeH = nh,
                 detect = o.optBoolean("detect", true),
+                splitTop = split?.optJSONArray("top")?.rect(),
+                splitBottom = split?.optJSONArray("bottom")?.rect(),
+                splitAspect = o.ratio("splitAspect"),
             )
         }
     }

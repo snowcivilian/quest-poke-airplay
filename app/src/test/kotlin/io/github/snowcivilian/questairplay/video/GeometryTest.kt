@@ -30,5 +30,9 @@ class GeometryTest {
         assertEquals(Viewport(0, 200, 800, 400), l)
     }
 
+    @Test fun subRectMapsIntoOuter() = assertRect(
+        NormRect(0.25f, 0.5f, 0.75f, 1f),
+        Geometry.sub(NormRect(0.25f, 0f, 0.75f, 1f), NormRect(0f, 0.5f, 1f, 1f)))
+
     @Test fun badInputFallsBackToFull() = assertRect(NormRect.FULL, Geometry.fit(0, 1080, 1.5f))
 }
