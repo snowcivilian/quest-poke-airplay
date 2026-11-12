@@ -3,15 +3,16 @@
 Build the Pokémon battle helper's data (S4) from PokeAPI's CSV dump.
 
 Writes app/src/main/assets/pokemon/{gen3,gen4,gen5,latest}.json: the type chart, species
-(types, base stats, abilities, catch rate, evolution line) and moves (type, category, power)
-as they were in that generation. Nothing is fetched while playing; rerun this to update.
+(types, base stats, abilities, catch rate, evolution line), moves (type, category, power) and
+what each ability does, as they were in that generation. Nothing is fetched while playing; rerun this to update.
 
 Usage: python3 tools/pokedata/build_pokedata.py [--ref <pokeapi git ref>]
 
 PokeAPI "past" tables store the OLD value with the LAST generation it applied to, so the value in
 generation G is the past row with the smallest generation_id >= G, else the current value.
 move_changelog rows hold the value from before changed_in_version_group; for generation G, the
-earliest change made after G that sets a field gives that field's value.
+earliest change made after G that sets a field gives that field's value. Abilities work the same
+way: ability_changelog_prose describes the behaviour before the change, else the current short effect.
 """
 import argparse
 import csv
@@ -32,6 +33,7 @@ TABLES = [
     "pokemon_types", "pokemon_types_past", "pokemon_stats", "pokemon_stats_past",
     "pokemon_abilities", "pokemon_abilities_past", "abilities", "ability_names",
     "moves", "move_names", "move_changelog", "version_groups",
+    "ability_prose", "ability_changelog", "ability_changelog_prose",
 ]
 GENERATIONS = {"gen3": 3, "gen4": 4, "gen5": 5, "latest": None}
 # Before Gen 4, a damaging move's category came from its type.
@@ -55,6 +57,35 @@ def load(ref):
 
 def names(rows, key):
     return {r[key]: r["name"] for r in rows if r["local_language_id"] == EN}
+
+
+def first_sentences(text, limit=160):
+    """Changelog prose can run long; keep whole sentences up to about [limit] characters."""
+    text = " ".join(text.split())
+    out = ""
+    for part in text.replace(". ", ".\n").split("\n"):
+        if out and len(out) + len(part) + 1 > limit: break
+        out = (out + " " + part).strip()
+    return out
+
+
+def ability_texts(d, g, used):
+    """Ability name -> what it does in generation g, for the abilities species in g can have."""
+    ab_name = names(d["ability_names"], "ability_id")
+    vg_gen = {v["id"]: int(v["generation_id"]) for v in d["version_groups"]}
+    vg_order = {v["id"]: int(v["order"]) for v in d["version_groups"]}
+    short = {r["ability_id"]: r["short_effect"] for r in d["ability_prose"] if r["local_language_id"] == EN}
+    prose = {r["ability_changelog_id"]: r["effect"] for r in d["ability_changelog_prose"] if r["local_language_id"] == EN}
+    later = defaultdict(list)
+    for c in d["ability_changelog"]:
+        if vg_gen[c["changed_in_version_group_id"]] > g and c["id"] in prose: later[c["ability_id"]].append(c)
+    out = {}
+    for aid, name in ab_name.items():
+        if name not in used: continue
+        old = sorted(later[aid], key=lambda c: vg_order[c["changed_in_version_group_id"]])
+        text = first_sentences(prose[old[0]["id"]]) if old else " ".join(short.get(aid, "").split())
+        if text: out[name] = text
+    return dict(sorted(out.items()))
 
 
 def past_value(past_rows, gen):
@@ -180,6 +211,7 @@ def build(d, gen_key, gen):
         "chart": chart,
         "species": species,
         "moves": moves,
+        "abilities": ability_texts(d, g, {a for sp in species for a in sp["abilities"] + ([sp["hidden"]] if "hidden" in sp else [])}),
     }
 
 
@@ -196,7 +228,8 @@ def main():
         with open(path, "w", encoding="utf-8") as f:
             json.dump(data, f, ensure_ascii=False, separators=(",", ":"))
         print(f"{key}: gen {data['generation']}, {len(data['types'])} types, "
-              f"{len(data['species'])} species, {len(data['moves'])} moves, {os.path.getsize(path)//1024} KB")
+              f"{len(data['species'])} species, {len(data['moves'])} moves, {len(data['abilities'])} abilities, "
+              f"{os.path.getsize(path)//1024} KB")
 
 
 if __name__ == "__main__":

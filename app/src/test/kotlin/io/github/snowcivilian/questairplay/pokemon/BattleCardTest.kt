@@ -31,6 +31,16 @@ class BattleCardTest {
         assertEquals("special", c.moves.first { it.move.name == "Ember" }.move.category)
         assertTrue(c.summary!!.myStrongTypes.isEmpty())
         assertEquals(45, c.player!!.species!!.catchRate)
+        assertEquals(listOf("Keen Eye"), c.oppAbilities.map { it.name })
+        assertEquals("Prevents accuracy from being lowered.", c.oppAbilities.single().text)
+    }
+
+    @Test fun abilityTextIsTheGenerationsOwn() {
+        // Sturdy only blocked one-hit KO moves before Gen 5
+        val gen4 = PokeData.parse(DataGen.GEN4, java.io.File("src/main/assets/pokemon/gen4.json").readText())
+        val gen5 = PokeData.parse(DataGen.GEN5, java.io.File("src/main/assets/pokemon/gen5.json").readText())
+        assertTrue(gen4.abilityText["Sturdy"]!!.startsWith("One Hit KO moves have no effect"))
+        assertTrue(gen5.abilityText["Sturdy"]!!.startsWith("Prevents being KOed from full HP"))
     }
 
     @Test fun doubleBattleIsJustANote() {

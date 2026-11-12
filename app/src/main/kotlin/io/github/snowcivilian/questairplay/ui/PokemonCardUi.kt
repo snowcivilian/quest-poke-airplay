@@ -43,6 +43,9 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.github.jqssun.airplay.Prefs
@@ -162,9 +165,17 @@ fun BattleCardContent(c: BattleCard, sprite: Bitmap?, modifier: Modifier = Modif
             }
         }
         opp?.species?.let { s ->
-            StatsLine("Its stats", s)
-            val abilities = s.abilities.joinToString(", ") + (s.hidden?.let { " · hidden: $it" } ?: "")
-            if (abilities.isNotBlank()) Text("May have: $abilities", style = small)
+            StatsLine("Its base stats", s)
+            if (c.oppAbilities.isNotEmpty()) {
+                Text(if (c.oppAbilities.size == 1) "Ability" else "Ability (one of)", style = MaterialTheme.typography.labelLarge)
+                c.oppAbilities.forEach { a ->
+                    Text(buildAnnotatedString {
+                        withStyle(SpanStyle(fontWeight = FontWeight.Bold)) { append(a.name) }
+                        if (a.hidden) append(" (hidden)")
+                        a.text?.let { append(" — $it") }
+                    }, style = small)
+                }
+            }
             if (s.evolutionLine.size > 1) Text(s.evolutionLine.joinToString(" → "), style = small)
         }
         val me = c.player
@@ -175,7 +186,7 @@ fun BattleCardContent(c: BattleCard, sprite: Bitmap?, modifier: Modifier = Modif
                     Text("You: ${me.species.name}", style = MaterialTheme.typography.labelLarge)
                     me.species.types.forEach { TypeChip(it) }
                 }
-                StatsLine("Your stats", me.species)
+                StatsLine("Your base stats", me.species)
             }
         }
     }
@@ -184,7 +195,7 @@ fun BattleCardContent(c: BattleCard, sprite: Bitmap?, modifier: Modifier = Modif
 @Composable
 private fun StatsLine(label: String, s: Species) {
     val names = listOf("HP", "Atk", "Def", "SpA", "SpD", "Spe")
-    Text("$label: " + s.stats.zip(names).joinToString("  ") { (v, n) -> "$n $v" } + "  (${s.stats.sum()})",
+    Text("$label: " + s.stats.zip(names).joinToString("  ") { (v, n) -> "$n $v" } + "  · BST ${s.stats.sum()}",
         style = MaterialTheme.typography.bodySmall)
 }
 

@@ -3,6 +3,9 @@ package io.github.snowcivilian.questairplay.pokemon
 /** One side of the battle: what was read off the screen and the species it matched. */
 data class Side(val readAs: String, val species: Species?)
 
+/** An ability the opponent may have, with what it does in the chosen generation. */
+data class AbilityInfo(val name: String, val text: String?, val hidden: Boolean)
+
 /** Everything the battle card shows (S4). Built by [BattleCards.build]; pure data. */
 data class BattleCard(
     val gen: DataGen,
@@ -20,6 +23,8 @@ data class BattleCard(
     val nicknamePrompt: String?,
     val note: String? = null,
     val demo: Boolean = false,
+    /** Abilities the opponent may have. */
+    val oppAbilities: List<AbilityInfo> = emptyList(),
 )
 
 object BattleCards {
@@ -37,6 +42,10 @@ object BattleCards {
             summary = if (opp != null && mine != null) Matchups.summary(data.chart, mine.types, opp.types) else null,
             moves = if (opp != null) Matchups.moves(data.chart, moves, opp.types) else emptyList(),
             nicknamePrompt = nicknamePrompt, demo = demo,
+            oppAbilities = opp?.let { s ->
+                s.abilities.map { AbilityInfo(it, data.abilityText[it], false) } +
+                    listOfNotNull(s.hidden?.let { AbilityInfo(it, data.abilityText[it], true) })
+            } ?: emptyList(),
         )
     }
 }

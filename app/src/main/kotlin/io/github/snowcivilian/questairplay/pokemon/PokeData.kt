@@ -32,6 +32,8 @@ class PokeData(
     val chart: TypeChart,
     val species: List<Species>,
     val moves: List<Move>,
+    /** What each ability does in this generation. */
+    val abilityText: Map<String, String> = emptyMap(),
 ) {
     private val speciesByName = species.associateBy { NameMatcher.normalize(it.name) }
     private val movesByName = moves.associateBy { NameMatcher.normalize(it.name) }
@@ -68,7 +70,8 @@ class PokeData(
                         if (m.isNull("power")) null else m.getInt("power"))
                 }
             }
-            return PokeData(gen, TypeChart(types, chart), sp, mv)
+            val ab = o.optJSONObject("abilities")?.let { a -> a.keys().asSequence().associateWith(a::getString) } ?: emptyMap()
+            return PokeData(gen, TypeChart(types, chart), sp, mv, ab)
         }
 
         private fun JSONArray.strings() = (0 until length()).map(::getString)
