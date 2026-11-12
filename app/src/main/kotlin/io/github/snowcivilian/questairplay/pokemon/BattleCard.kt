@@ -43,10 +43,10 @@ object BattleCards {
 
 /** Turning OCR text from a name box into lookup candidates (S4). Pure. */
 object NameReading {
-    /** OCR often runs the level into the name ("NIDORAN♂Lv8"): split before "Lv" + digit. */
-    private val LEVEL_GLUED = Regex("(?<=\\S)(?=L[VY]\\.?\\d)", RegexOption.IGNORE_CASE)
-    private val GENDER_BEFORE_LEVEL = Regex("[♂♀](?=L[VY]|\\d)", RegexOption.IGNORE_CASE)
-    private val LEVEL = Regex("^((L[VY]|LEVEL)\\.?:?\\d{0,3}|\\d{1,3})$", RegexOption.IGNORE_CASE)
+    /** OCR often runs the level into the name ("NIDORAN♂Lv8"): split before "Lv" + digit. Platinum's Lv glyph often reads "Lu". */
+    private val LEVEL_GLUED = Regex("(?<=\\S)(?=L[VYU]\\.?\\d)", RegexOption.IGNORE_CASE)
+    private val GENDER_BEFORE_LEVEL = Regex("[♂♀](?=L[VYU]|\\d)", RegexOption.IGNORE_CASE)
+    private val LEVEL = Regex("^((L[VYU]|LEVEL)\\.?:?\\d{0,3}|\\d{1,3})$", RegexOption.IGNORE_CASE)
 
     /**
      * Whole line without level and gender marks first, then single words longest first, then

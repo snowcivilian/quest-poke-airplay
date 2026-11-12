@@ -58,6 +58,13 @@ class BattleDetectionTest {
         assertTrue(o.oppBox && o.playerBox); assertEquals(1, o.oppBars)
     }
 
+    @Test fun moveTextInkIgnoresColouredBorders() {
+        assertTrue(BattleDetector.isInk(17, 18, 9))      // glyph outline
+        assertTrue(BattleDetector.isInk(152, 151, 133))  // glyph fill
+        assertTrue(!BattleDetector.isInk(255, 255, 182)) // slot background
+        assertTrue(!BattleDetector.isInk(39, 187, 0))    // green slot border
+    }
+
     @Test fun platinumBoxesNeedTheirColourNotJustHpBars() {
         // the same frame with the GBA rule (light boxes only) is not a battle: the box colour matters
         val l = profiles.first { it.id == "dppt" }.layout!!.copy(boxColor = null)

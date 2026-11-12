@@ -71,6 +71,10 @@ object BattleDetector {
         return hue in 85f..175f || hue in 38f..70f || hue < 18f || hue > 345f
     }
 
+    /** Text ink for OCR: dark-to-mid grey, not a coloured border or background. */
+    fun isInk(r: Int, g: Int, b: Int) =
+        (299 * r + 587 * g + 114 * b) / 1000 < 170 && maxOf(r, g, b) - minOf(r, g, b) < 60
+
     fun isLight(r: Int, g: Int, b: Int) = minOf(r, g, b) > 190 && maxOf(r, g, b) - minOf(r, g, b) < 60
 
     private fun hue(r: Int, g: Int, b: Int, max: Int, min: Int): Float {

@@ -16,6 +16,7 @@ class BattleCardTest {
         assertTrue(NameReading.candidates("Lv5").isEmpty())
         assertEquals("Nidoran♀", NameReading.match(gen3.speciesMatcher, "NIDORAN♀ Lv8")?.name)
         assertEquals("Nidoran♂", NameReading.match(gen3.speciesMatcher, "NIDORAN♂♂Lv8")?.name)
+        assertEquals("Sceptile", NameReading.candidates("Sceptile Lu36").first()) // Platinum, read on the headset
     }
 
     @Test fun cardForAWildBattleInTheFightMenu() {
