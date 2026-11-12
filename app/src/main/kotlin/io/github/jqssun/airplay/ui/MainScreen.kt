@@ -110,11 +110,14 @@ fun MainScreen(
     val video: @Composable () -> Unit = {
         // quest fork: size the surface to the cropped preset, not the raw stream
         val aspect by io.github.snowcivilian.questairplay.video.VideoController.displayAspect.collectAsState()
-        VideoSurfaceView(
-            onSurfaceAvailable = onSurfaceAvailable,
-            onSurfaceDestroyed = onSurfaceDestroyed,
-            aspectRatio = aspect
-        )
+        androidx.compose.foundation.layout.Box(contentAlignment = Alignment.Center) { // quest fork (S4): calibration overlay
+            VideoSurfaceView(
+                onSurfaceAvailable = onSurfaceAvailable,
+                onSurfaceDestroyed = onSurfaceDestroyed,
+                aspectRatio = aspect
+            )
+            io.github.snowcivilian.questairplay.ui.CalibrationOverlay(aspect)
+        }
     }
 
     // fullscreen only once mirroring reports a size: connections rise before the kind is known
@@ -685,6 +688,7 @@ private fun OverviewContent(
             }
             if (state == ServerState.RUNNING && mirroringActive && !showAudioMode) { // quest fork (R4)
                 io.github.snowcivilian.questairplay.ui.VolumeOverlay(viewModel, Modifier.align(Alignment.BottomCenter).padding(8.dp))
+                io.github.snowcivilian.questairplay.ui.PokemonCardOverlay(Modifier.matchParentSize()) // quest fork (S4)
             }
             if (debugEnabled && connections > 0) {
                 DebugOverlay(debugInfo, Modifier.align(Alignment.TopStart).padding(8.dp))
@@ -830,6 +834,7 @@ private fun FullscreenVideo(
             visible = controlsVisible,
             modifier = Modifier.align(Alignment.BottomCenter).padding(12.dp)
         ) { io.github.snowcivilian.questairplay.ui.VolumeOverlay(viewModel) }
+        io.github.snowcivilian.questairplay.ui.PokemonCardOverlay(Modifier.matchParentSize()) // quest fork (S4)
         if (debugEnabled) {
             DebugOverlay(debugInfo, Modifier.align(Alignment.TopStart).padding(8.dp))
         }

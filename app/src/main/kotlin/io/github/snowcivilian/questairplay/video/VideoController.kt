@@ -54,6 +54,10 @@ object VideoController {
 
     @Volatile private var scanIntensity = 0f
 
+    /** S4: crop of the whole game (both DS screens even when split) for frame captures. */
+    val gameCrop: NormRect
+        get() = if (frameW > 0 && frameH > 0) _active.value.cropFor(frameW, frameH) else NormRect.FULL
+
     @Volatile private var frameW = 0
     @Volatile private var frameH = 0
     @Volatile private var config = RenderConfig(NormRect.FULL, 16f / 9f)

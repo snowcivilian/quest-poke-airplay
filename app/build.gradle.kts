@@ -151,6 +151,8 @@ dependencies {
 
     testImplementation("junit:junit:4.13.2") // quest fork: unit tests for pure logic
     testImplementation("org.json:json:20250517") // real org.json for JVM tests (android.jar's is a stub)
+    // quest fork (S4): on-device text recognition with the model bundled in the APK (no Play Services download)
+    implementation("com.google.mlkit:text-recognition:16.0.1")
     // quest fork (R10): Meta Spatial SDK for theater mode, quest flavor only. Matches Meta's samples.
     "questImplementation"("com.meta.spatial:meta-spatial-sdk:0.15.0")
     "questImplementation"("com.meta.spatial:meta-spatial-sdk-toolkit:0.15.0")

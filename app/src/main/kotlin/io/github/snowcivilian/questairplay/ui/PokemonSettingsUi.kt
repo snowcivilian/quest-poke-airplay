@@ -23,7 +23,10 @@ import androidx.compose.ui.unit.dp
 import io.github.jqssun.airplay.Prefs
 import io.github.snowcivilian.questairplay.pokemon.DataGen
 import io.github.snowcivilian.questairplay.pokemon.GameProfile
+import io.github.snowcivilian.questairplay.pokemon.Nicknames
+import io.github.snowcivilian.questairplay.pokemon.PokemonEngine
 import io.github.snowcivilian.questairplay.pokemon.PokemonSettings
+import androidx.compose.material3.TextButton
 import io.github.snowcivilian.questairplay.video.VideoController
 
 /** S4 settings: off by default; game and data generation only shown when on. */
@@ -63,7 +66,44 @@ fun PokemonSettingsSection() {
                 label = { Text(g.label) }, modifier = Modifier.heightIn(min = TARGET))
         }
     }
-    Text("Battle recognition is still being built: game data and type charts are in; on-screen detection and the card come next.",
-        style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
-        modifier = Modifier.padding(16.dp))
+    val status by PokemonEngine.status.collectAsState()
+    val ocr by PokemonEngine.ocrTest.collectAsState()
+    val left by rememberPref(Prefs.POKEMON_CARD_LEFT)
+    val calibration by rememberPref(Prefs.POKEMON_CALIBRATION)
+    Text("Status: $status" + (selected.layout?.let { "" } ?: " (no screen layout for this game yet)"),
+        style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp))
+    Row(Modifier.padding(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+        Text("Card position", Modifier.weight(1f))
+        FilterChip(selected = left, onClick = { Prefs.POKEMON_CARD_LEFT.write(prefs, true) }, label = { Text("Top left") },
+            modifier = Modifier.heightIn(min = TARGET))
+        FilterChip(selected = !left, onClick = { Prefs.POKEMON_CARD_LEFT.write(prefs, false) }, label = { Text("Top right") },
+            modifier = Modifier.heightIn(min = TARGET))
+    }
+    Row(Modifier.padding(horizontal = 8.dp), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+        TextButton(onClick = { PokemonEngine.showDemo(ctx) }, modifier = Modifier.heightIn(min = TARGET)) { Text("Show sample card") }
+        TextButton(onClick = { PokemonEngine.runOcrSelfTest() }, modifier = Modifier.heightIn(min = TARGET)) { Text("Test text reading") }
+    }
+    ocr?.let { Text("Text reading: $it", style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(horizontal = 16.dp)) }
+    SettingToggle("Calibration mode", "Draws this game's screen regions over the video and saves a frame every 2 s to " +
+        PokemonEngine.capturesDir(ctx, selected.id).absolutePath, calibration, prefSetter(Prefs.POKEMON_CALIBRATION))
+    NicknameList(selected)
+}
+
+@Composable
+private fun NicknameList(profile: GameProfile) {
+    val ctx = LocalContext.current
+    val prefs = ctx.questPrefs()
+    var bump by remember { mutableIntStateOf(0) }
+    val nicks = remember(profile.id, bump) { Nicknames.all(prefs, profile.id) }
+    if (nicks.isEmpty()) return
+    Text("Saved nicknames", style = MaterialTheme.typography.labelLarge, modifier = Modifier.padding(start = 16.dp, top = 8.dp))
+    nicks.forEach { (nick, species) ->
+        ListItem(
+            headlineContent = { Text("$nick → $species") },
+            trailingContent = {
+                TextButton(onClick = { Nicknames.remove(prefs, profile.id, nick); bump++ }) { Text("Delete") }
+            },
+        )
+    }
 }

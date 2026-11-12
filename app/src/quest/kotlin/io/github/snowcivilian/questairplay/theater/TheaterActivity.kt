@@ -37,13 +37,16 @@ import com.meta.spatial.isdk.IsdkPanelDimensions
 import com.meta.spatial.isdk.IsdkPanelGrabHandle
 import com.meta.spatial.isdk.IsdkPanelResize
 import com.meta.spatial.toolkit.Visible
+import io.github.snowcivilian.questairplay.pokemon.PokemonEngine
 import io.github.snowcivilian.questairplay.ui.TheaterControlsPanel
+import io.github.snowcivilian.questairplay.ui.TheaterPokemonCard
 import io.github.snowcivilian.questairplay.ui.TheaterControlsPill
 import com.meta.spatial.vr.VRFeature
 import io.github.jqssun.airplay.MainActivity
 import io.github.jqssun.airplay.Prefs
 import io.github.jqssun.airplay.R
 import io.github.jqssun.airplay.get
+import io.github.jqssun.airplay.observe
 import io.github.jqssun.airplay.service.AirPlayService
 import io.github.snowcivilian.questairplay.panel.PanelSwitcher
 import io.github.snowcivilian.questairplay.video.VideoController
@@ -66,6 +69,7 @@ class TheaterActivity : AppSystemActivity() {
     private var pill: Entity? = null
     private var spec: ScreenSpec? = null // computed once the activity has a Context
     private var sceneReady = false
+    private var pokemonCard: Entity? = null // S4: battle card beside the screen
 
     private val connection = object : ServiceConnection {
         override fun onServiceConnected(name: ComponentName?, binder: IBinder?) {
@@ -114,6 +118,11 @@ class TheaterActivity : AppSystemActivity() {
             { _, ctx -> ComposeView(ctx).apply { setContent { TheaterControlsPill({ showControls(true) }, ::backToPanel) } } },
             { _ -> UIPanelSettings(shape = QuadShapeOptions(width = 0.34f, height = 0.075f), display = DpPerMeterDisplayOptions()) },
         ),
+        ComposeViewPanelRegistration(
+            R.id.theater_pokemon_card,
+            { _, ctx -> ComposeView(ctx).apply { setContent { TheaterPokemonCard() } } },
+            { _ -> UIPanelSettings(shape = QuadShapeOptions(width = 0.42f, height = 0.62f), display = DpPerMeterDisplayOptions()) },
+        ),
     )
 
     /** Minimize swaps the full controls for a small pill at the same spot; both can be grabbed and moved. */
@@ -131,6 +140,7 @@ class TheaterActivity : AppSystemActivity() {
         // LOCAL_FLOOR: the system recenter (hold the Meta button) works out of the box
         scene.setReferenceSpace(ReferenceSpace.LOCAL_FLOOR)
         scene.enablePassthrough(prefs[Prefs.THEATER_PASSTHROUGH])
+        spawnPokemonCard()
         rebuildScreen()
         // Low and centered below the line of sight, tilted up like a laptop (Quaternion = pitch, yaw, roll
         // in degrees; positive pitch faces up, as in Meta's SpatialVideoSample). VRFeature defaults to
@@ -143,6 +153,23 @@ class TheaterActivity : AppSystemActivity() {
             IsdkPanelDimensions(), IsdkGrabbable(), IsdkPanelGrabHandle())
         scope.launch {
             VideoController.displayAspect.collect { rebuildScreen() }
+        }
+    }
+
+    /** S4: battle card floating to the right of the screen, turned toward the viewer; shown only during a battle. */
+    private fun spawnPokemonCard() {
+        val sp = currentSpec()
+        val x = sp.widthM / 2f + 0.35f
+        val z = sp.distanceM * 0.75f
+        val yaw = Math.toDegrees(kotlin.math.atan2(x.toDouble(), z.toDouble())).toFloat()
+        pokemonCard = Entity.create(Panel(R.id.theater_pokemon_card),
+            Transform(Pose(Vector3(x, sp.elevationM, z), Quaternion(0f, yaw, 0f))), Visible(false),
+            Grabbable(true, GrabbableType.FACE), IsdkPanelDimensions(), IsdkGrabbable(), IsdkPanelGrabHandle())
+        scope.launch {
+            kotlinx.coroutines.flow.combine(PokemonEngine.card, prefs.observe { this[Prefs.POKEMON_HELPER] }) { card, on ->
+                card != null && (on || card.demo)
+            }
+                .collect { pokemonCard?.setComponent(Visible(it)) }
         }
     }
 

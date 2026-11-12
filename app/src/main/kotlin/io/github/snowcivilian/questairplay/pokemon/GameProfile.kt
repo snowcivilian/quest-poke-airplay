@@ -7,14 +7,22 @@ import io.github.jqssun.airplay.get
 import org.json.JSONObject
 
 /** A supported game (S4), from assets/pokemon/profiles.json. */
-data class GameProfile(val id: String, val label: String, val system: String, val defaultGen: DataGen) {
+data class GameProfile(
+    val id: String, val label: String, val system: String, val defaultGen: DataGen,
+    /** Battle screen regions; null until the game has been tuned. */
+    val layout: BattleLayout? = null,
+) {
     companion object {
         fun parseAll(json: String): List<GameProfile> {
-            val a = JSONObject(json).getJSONArray("profiles")
+            val root = JSONObject(json)
+            val layouts = root.optJSONObject("layouts")
+            val a = root.getJSONArray("profiles")
             return (0 until a.length()).map {
                 val o = a.getJSONObject(it)
+                val layout = o.optString("layout").takeIf { s -> s.isNotEmpty() && s != "null" }
+                    ?.let { name -> BattleLayout.parse(layouts!!.getJSONObject(name)) }
                 GameProfile(o.getString("id"), o.getString("label"), o.getString("system"),
-                    DataGen.of(o.getString("defaultGen")) ?: error("bad defaultGen in ${o.getString("id")}"))
+                    DataGen.of(o.getString("defaultGen")) ?: error("bad defaultGen in ${o.getString("id")}"), layout)
             }
         }
 

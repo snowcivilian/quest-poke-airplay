@@ -3,14 +3,17 @@
     "Pokémon battle helper game profiles (S4). Data, not code.",
     "system: which presets show this profile (gba, ds). defaultGen: gen3 | gen4 | gen5 | latest; the user's",
     "choice is saved per profile. layout: screen regions as fractions of the cropped game frame (HP boxes,",
-    "name fields, battle text box, move slots, opponent sprite area); filled in when each game is tuned."
+    "name fields, battle text box, move slots, opponent sprite area), named in layouts. null = not tuned yet."
   ],
-  "version": 1,
+  "version": 2,
+  "layouts": {
+    "gba": {"_note": "Best estimate from the 240x160 FRLG/RSE battle screen; not yet tuned against captures.", "oppHpBar": [0.17, 0.175, 0.46, 0.27], "playerHpBar": [0.645, 0.54, 0.94, 0.61], "oppName": [0.07, 0.1, 0.37, 0.19], "playerName": [0.57, 0.465, 0.86, 0.555], "textBox": [0.02, 0.71, 0.98, 0.99], "fightInfo": [0.67, 0.71, 0.99, 0.99], "moveSlots": [[0.03, 0.72, 0.33, 0.84], [0.33, 0.72, 0.66, 0.84], [0.03, 0.84, 0.33, 0.96], [0.33, 0.84, 0.66, 0.96]], "oppSprite": [0.58, 0.04, 0.89, 0.46]}
+  },
   "profiles": [
-    { "id": "frlg",          "label": "FireRed / LeafGreen",        "system": "gba", "defaultGen": "gen3", "layout": null },
-    { "id": "rse",           "label": "Ruby / Sapphire / Emerald",  "system": "gba", "defaultGen": "gen3", "layout": null },
-    { "id": "frlg_hack",     "label": "FireRed-based hack",         "system": "gba", "defaultGen": "gen3", "layout": null },
-    { "id": "emerald_hack",  "label": "Emerald-based hack",         "system": "gba", "defaultGen": "gen3", "layout": null },
+    { "id": "frlg",          "label": "FireRed / LeafGreen",        "system": "gba", "defaultGen": "gen3", "layout": "gba" },
+    { "id": "rse",           "label": "Ruby / Sapphire / Emerald",  "system": "gba", "defaultGen": "gen3", "layout": "gba" },
+    { "id": "frlg_hack",     "label": "FireRed-based hack",         "system": "gba", "defaultGen": "gen3", "layout": "gba" },
+    { "id": "emerald_hack",  "label": "Emerald-based hack",         "system": "gba", "defaultGen": "gen3", "layout": "gba" },
     { "id": "dppt",          "label": "Diamond / Pearl / Platinum", "system": "ds",  "defaultGen": "gen4", "layout": null },
     { "id": "hgss",          "label": "HeartGold / SoulSilver",     "system": "ds",  "defaultGen": "gen4", "layout": null },
     { "id": "bw",            "label": "Black / White",              "system": "ds",  "defaultGen": "gen5", "layout": null },
