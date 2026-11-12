@@ -31,6 +31,7 @@ import com.meta.spatial.compose.ComposeFeature
 import com.meta.spatial.compose.ComposeViewPanelRegistration
 import com.meta.spatial.core.Quaternion
 import com.meta.spatial.toolkit.Grabbable
+import com.meta.spatial.toolkit.Hittable
 import com.meta.spatial.toolkit.GrabbableType
 import com.meta.spatial.isdk.IsdkGrabbable
 import com.meta.spatial.isdk.IsdkPanelDimensions
@@ -84,6 +85,7 @@ class TheaterActivity : AppSystemActivity() {
             Prefs.THEATER_HEIGHT.key, Prefs.THEATER_DISTANCE.key,
             Prefs.THEATER_ELEVATION.key, Prefs.THEATER_CURVE.key, Prefs.THEATER_DS_BOTTOM_SCALE.key -> rebuildScreen()
             Prefs.THEATER_DS_SPLIT.key -> VideoController.setTheaterSplit(prefs[Prefs.THEATER_DS_SPLIT])
+            TheaterLayoutStore.KEY_BOTTOM_POSE -> if (TheaterLayoutStore.bottomPose(prefs) == null) placeBottom()
         }
     }
 
@@ -163,6 +165,17 @@ class TheaterActivity : AppSystemActivity() {
         scope.launch {
             VideoController.splitActive.collect { rebuildScreen() }
         }
+        // remember where the bottom screen was moved to
+        scope.launch {
+            while (true) {
+                kotlinx.coroutines.delay(1000)
+                val pose = bottom?.tryGetComponent<Transform>()?.transform ?: continue
+                val arr = floatArrayOf(pose.t.x, pose.t.y, pose.t.z, pose.q.w, pose.q.x, pose.q.y, pose.q.z)
+                val def = bottomDefaultPose
+                val moved = def == null || arr.indices.any { kotlin.math.abs(arr[it] - def[it]) > 0.01f }
+                if (moved && !arr.contentEquals(TheaterLayoutStore.bottomPose(prefs))) TheaterLayoutStore.saveBottomPose(prefs, arr)
+            }
+        }
     }
 
     private fun currentSpec() = TheaterGeometry.screen(
@@ -192,12 +205,29 @@ class TheaterActivity : AppSystemActivity() {
         bottom = null
         if (ds != null) {
             bottomSpec = ds.bottom
+            lastDs = ds
             bottom = Entity.create(
-                Panel(R.id.theater_screen_bottom),
-                Transform(Pose(Vector3(0f, ds.bottomCenterY, ds.bottomZ), Quaternion(ds.bottomTiltDeg, 0f, 0f))),
+                Panel(R.id.theater_screen_bottom), bottomTransform(ds), Hittable(),
                 Grabbable(true, GrabbableType.FACE), IsdkPanelDimensions(), IsdkGrabbable(), IsdkPanelGrabHandle(),
             )
         }
+    }
+
+    private var lastDs: DsLayout? = null
+    private var bottomDefaultPose: FloatArray? = null
+
+    /** Saved position if the user moved the bottom screen, else the handheld-style default. */
+    private fun bottomTransform(ds: DsLayout): Transform {
+        val def = Pose(Vector3(0f, ds.bottomCenterY, ds.bottomZ), Quaternion(ds.bottomTiltDeg, 0f, 0f))
+        bottomDefaultPose = floatArrayOf(def.t.x, def.t.y, def.t.z, def.q.w, def.q.x, def.q.y, def.q.z)
+        val saved = TheaterLayoutStore.bottomPose(prefs) ?: return Transform(def)
+        return Transform(Pose(Vector3(saved[0], saved[1], saved[2]), Quaternion(saved[3], saved[4], saved[5], saved[6])))
+    }
+
+    /** "Reset position": move the existing bottom screen back to its default spot. */
+    private fun placeBottom() {
+        val ds = lastDs ?: return
+        bottom?.setComponent(bottomTransform(ds))
     }
 
     private fun onScreenSurface(s: Surface) {
