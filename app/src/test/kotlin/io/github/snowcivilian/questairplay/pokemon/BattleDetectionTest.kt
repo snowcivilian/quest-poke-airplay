@@ -11,9 +11,15 @@ class BattleDetectionTest {
     private val profiles = GameProfile.parseAll(java.io.File("src/main/assets/pokemon/profiles.json").readText())
     private val gba = profiles.first { it.id == "frlg" }.layout!!
 
-    /** Synthetic 720x480 GBA battle frame: dark scene, light HP boxes, coloured HP bars. */
-    private fun frame(opp: Int = 1, player: Boolean = true, color: IntArray = intArrayOf(112, 248, 168), barFrac: Float = 1f): GameFrame {
-        val w = 720; val h = 480
+    /**
+     * Synthetic battle frame: dark scene, HP boxes in [boxColor] (light for GBA), coloured HP bars.
+     * Default is a 720x480 GBA frame; [ds] gives a 512x768 stacked DS frame.
+     */
+    private fun frame(
+        opp: Int = 1, player: Boolean = true, color: IntArray = intArrayOf(112, 248, 168), barFrac: Float = 1f,
+        layout: BattleLayout = gba, boxColor: IntArray = intArrayOf(248, 248, 216), ds: Boolean = false,
+    ): GameFrame {
+        val w = if (ds) 512 else 720; val h = if (ds) 768 else 480
         val px = ByteArray(w * h * 4)
         fun fill(r: NormRect, c: IntArray) {
             for (y in (r.top * h).toInt() until (r.bottom * h).toInt()) for (x in (r.left * w).toInt() until (r.right * w).toInt()) {
@@ -22,17 +28,22 @@ class BattleDetectionTest {
         }
         fill(NormRect(0f, 0f, 1f, 1f), intArrayOf(40, 60, 40))
         fun box(name: NormRect, bar: NormRect, bars: Int) {
-            fill(name, intArrayOf(248, 248, 216))
+            fill(name, boxColor)
             val rowH = bar.height / 3
             repeat(bars) { i ->
                 val top = bar.top + i * rowH * 1.5f
                 fill(NormRect(bar.left + bar.width * 0.1f, top, bar.left + bar.width * (0.1f + 0.8f * barFrac), top + rowH * 0.6f), color)
             }
         }
-        if (opp > 0) box(gba.oppName, gba.oppHpBar, opp)
-        if (player) box(gba.playerName, gba.playerHpBar, 1)
+        if (opp > 0) box(layout.oppName, layout.oppHpBar, opp)
+        if (player) box(layout.playerName, layout.playerHpBar, 1)
         return GameFrame(px, w, h)
     }
+
+    private val dppt = profiles.first { it.id == "dppt" }.layout!!
+
+    /** Platinum-style frame: stacked DS screens with the layout's dark grey HP boxes. */
+    private fun platinum() = frame(layout = dppt, boxColor = dppt.boxColor!!, ds = true)
 
     @Test fun gen4HasALayoutGen5NotYet() {
         assertNotNull(profiles.first { it.id == "rse" }.layout)
@@ -41,20 +52,8 @@ class BattleDetectionTest {
         assertNull(profiles.first { it.id == "bw" }.layout)
     }
 
-    /** A real Platinum capture from the headset (FIGHT menu open, Sceptile vs Staravia). */
-    private fun platinum(): GameFrame {
-        val img = javax.imageio.ImageIO.read(javaClass.getResourceAsStream("/pokemon/platinum_fight.png"))
-        val px = ByteArray(img.width * img.height * 4)
-        for (y in 0 until img.height) for (x in 0 until img.width) {
-            val c = img.getRGB(x, y); val i = (y * img.width + x) * 4
-            px[i] = (c shr 16).toByte(); px[i + 1] = (c shr 8).toByte(); px[i + 2] = c.toByte(); px[i + 3] = -1
-        }
-        return GameFrame(px, img.width, img.height)
-    }
-
-    @Test fun realPlatinumBattleIsDetected() {
-        val l = profiles.first { it.id == "dppt" }.layout!!
-        val o = BattleDetector.observe(platinum(), l)
+    @Test fun platinumBattleIsDetected() {
+        val o = BattleDetector.observe(platinum(), dppt)
         assertTrue(o.oppBox && o.playerBox); assertEquals(1, o.oppBars)
     }
 
@@ -67,8 +66,7 @@ class BattleDetectionTest {
 
     @Test fun platinumBoxesNeedTheirColourNotJustHpBars() {
         // the same frame with the GBA rule (light boxes only) is not a battle: the box colour matters
-        val l = profiles.first { it.id == "dppt" }.layout!!.copy(boxColor = null)
-        val o = BattleDetector.observe(platinum(), l)
+        val o = BattleDetector.observe(platinum(), dppt.copy(boxColor = null))
         assertTrue(!o.oppBox && !o.playerBox)
     }
 
