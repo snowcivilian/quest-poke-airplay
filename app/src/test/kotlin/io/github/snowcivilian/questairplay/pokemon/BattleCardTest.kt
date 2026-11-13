@@ -43,10 +43,40 @@ class BattleCardTest {
         assertTrue(gen5.abilityText["Sturdy"]!!.startsWith("Prevents being KOed from full HP"))
     }
 
-    @Test fun doubleBattleIsJustANote() {
-        val c = BattleCards.build(gen3, BattlePhase.DOUBLE, null, null, null, emptyList(), null)
-        assertEquals("Double battles not supported", c.note)
-        assertNull(c.opponent)
+    private val gen4 = PokeData.parse(DataGen.GEN4, java.io.File("src/main/assets/pokemon/gen4.json").readText())
+    private fun side(n: String) = Side(n, gen4.speciesNamed(n))
+
+    @Test fun doubleBattleRatesMovesAgainstBothOpponents() {
+        val moves = listOf("Leaf Blade", "X-Scissor").map { gen4.moveNamed(it)!! }
+        val c = BattleCards.build(gen4, BattlePhase.DOUBLE, side("Staravia"), side("Sceptile"), false, moves, null,
+            opponent2 = side("Bidoof"), partner = side("Luxio"))
+        assertEquals("Bidoof", c.opponent2!!.side.species!!.name)
+        assertEquals(listOf("Fighting"), c.opponent2!!.profile[2f])
+        val leaf = c.moves.first { it.move.name == "Leaf Blade" }
+        assertEquals(0.5f, leaf.multiplier, 0f)        // Grass on Staravia (Normal/Flying)
+        assertEquals(1f, leaf.vsSecond!!, 0f)          // Grass on Bidoof (Normal)
+        assertEquals("Luxio", c.partner!!.species!!.name)
+    }
+
+    @Test fun partyRowsShowEachMatchup() {
+        val c = BattleCards.build(gen4, BattlePhase.IN_BATTLE, side("Staravia"), side("Sceptile"), false, emptyList(), null,
+            party = listOf(PartyRead("LEAFY", gen4.speciesNamed("Sceptile")), PartyRead("Luxio", gen4.speciesNamed("Luxio")), PartyRead("???", null)))
+        val luxio = c.party.first { it.name == "Luxio" }.matches.single()
+        assertEquals("Electric" to 2f, luxio.bestHit)
+        assertEquals("Normal" to 1f, luxio.worstTaken)  // its Flying only does ½× to Electric
+        assertEquals(2f, c.party.first { it.name == "LEAFY" }.matches.single().worstTaken.second, 0f) // Flying on Grass
+        assertTrue(c.party.first { it.name == "???" }.matches.isEmpty())
+    }
+
+    @Test fun learningAMoveComparesWithKnownMoves() {
+        val known = listOf("Leaf Blade", "Dragon Pulse", "Giga Drain", "X-Scissor").map { gen4.moveNamed(it)!! }
+        val c = BattleCards.build(gen4, BattlePhase.IN_BATTLE, null, side("Sceptile"), null, emptyList(), null,
+            learning = gen4.moveNamed("Leaf Storm"), knownMoves = known, afterBattle = true)
+        val l = c.learning!!
+        assertEquals("Leaf Storm", l.move.name); assertTrue(l.stab)
+        assertEquals(listOf(true, false, true, false), l.currentStab)
+        assertTrue(c.afterBattle)
+        assertEquals(listOf("Overgrow"), c.myAbilities.map { it.name })
     }
 
     @Test fun unknownOpponentHasNoProfileYet() {

@@ -168,6 +168,14 @@ def build(d, gen_key, gen):
             else:
                 normal.append(ab_name[r["ability_id"]])
         line = sorted(chains[s["evolution_chain_id"]], key=lambda x: (dep(x["id"]), int(x["id"])))
+        # every root-to-last-stage path, so split evolutions (Eevee, Wurmple, Kirlia) keep their branches
+        members = {x["id"] for x in line}
+        kids = defaultdict(list)
+        for x in line:
+            if parent.get(x["id"]) in members: kids[parent[x["id"]]].append(x["id"])
+        def paths(i):
+            return [[i]] if not kids[i] else [[i] + p for k in kids[i] for p in paths(k)]
+        roots = [x["id"] for x in line if parent.get(x["id"]) not in members]
         entry = {
             "id": int(s["id"]),
             "name": sp_name[s["id"]],
@@ -175,7 +183,7 @@ def build(d, gen_key, gen):
             "stats": [stats[sid] for sid in STAT_IDS],
             "abilities": normal,
             "catchRate": int(s["capture_rate"]),
-            "evo": [sp_name[x["id"]] for x in line],
+            "evo": [[sp_name[i] for i in p] for r in roots for p in paths(r)],
         }
         if hidden: entry["hidden"] = hidden
         species.append(entry)

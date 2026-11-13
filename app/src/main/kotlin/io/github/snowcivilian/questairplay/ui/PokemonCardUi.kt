@@ -53,6 +53,10 @@ import io.github.jqssun.airplay.Prefs
 import io.github.snowcivilian.questairplay.pokemon.BattleCard
 import io.github.snowcivilian.questairplay.pokemon.PokeDataRepository
 import io.github.snowcivilian.questairplay.pokemon.PokemonEngine
+import io.github.snowcivilian.questairplay.pokemon.Move
+import io.github.snowcivilian.questairplay.pokemon.LearnInfo
+import io.github.snowcivilian.questairplay.pokemon.AbilityInfo
+import androidx.compose.material3.HorizontalDivider
 import io.github.snowcivilian.questairplay.pokemon.Status
 import io.github.snowcivilian.questairplay.pokemon.PokemonSettings
 import io.github.snowcivilian.questairplay.pokemon.Species
@@ -140,54 +144,68 @@ private fun multColor(m: Float) = when {
 @Composable
 fun BattleCardContent(c: BattleCard, sprite: Bitmap?, modifier: Modifier = Modifier) {
     val small = MaterialTheme.typography.bodySmall
+    val label = MaterialTheme.typography.labelLarge
     Column(modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(6.dp)) {
         if (c.demo) Row(verticalAlignment = Alignment.CenterVertically) {
             Text("Sample card", style = MaterialTheme.typography.labelSmall, modifier = Modifier.weight(1f))
             TextButton(onClick = PokemonEngine::dismissDemo) { Text("Close") }
         }
         c.note?.let { Text(it, style = MaterialTheme.typography.titleSmall); return@Column }
+        // what needs a decision right now goes first
+        c.learning?.let { l -> LearnSection(l, c.player?.species?.name, small) }
+        if (c.party.isNotEmpty()) PartySection(c, small)
         val opp = c.opponent
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            sprite?.let {
-                Image(it.asImageBitmap(), null, filterQuality = FilterQuality.None, modifier = Modifier.size(64.dp))
-                Spacer(Modifier.width(8.dp))
-            }
-            Column {
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Text(opp?.species?.name ?: opp?.readAs?.let { "$it ?" } ?: "Reading…", style = MaterialTheme.typography.titleMedium)
-                    c.oppStatus?.let { StatusChip(it) }
+        if (!c.afterBattle) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                sprite?.let {
+                    Image(it.asImageBitmap(), null, filterQuality = FilterQuality.None, modifier = Modifier.size(64.dp))
+                    Spacer(Modifier.width(8.dp))
                 }
-                opp?.species?.let { s ->
-                    Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) { s.types.forEach { TypeChip(it) } }
-                    Text(when (c.wild) { true -> "Wild · catch rate ${s.catchRate}"; false -> "Trainer's Pokémon"; null -> "" }, style = small)
-                }
-            }
-        }
-        if (c.opponentProfile.isNotEmpty()) {
-            c.opponentProfile.forEach { (m, types) ->
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(mult(m), color = multColor(m), fontWeight = FontWeight.Bold, modifier = Modifier.width(32.dp))
-                    FlowRow(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        types.forEach { TypeChip(it) }
+                Column {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Text(opp?.species?.name ?: opp?.readAs?.let { "$it ?" } ?: "Reading…", style = MaterialTheme.typography.titleMedium)
+                        c.oppStatus?.let { StatusChip(it) }
+                    }
+                    opp?.species?.let { s ->
+                        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) { s.types.forEach { TypeChip(it) } }
+                        Text(when (c.wild) { true -> "Wild · catch rate ${s.catchRate}"; false -> "Trainer's Pokémon"; null -> "" }, style = small)
                     }
                 }
             }
-        }
-        c.oppStatusNotes.forEach { Text("${c.oppStatus!!.label}: $it", style = small, color = Color(0xFFFFD180)) }
-        c.summary?.let { s ->
-            s.myStrongTypes.forEach { (t, m) -> Text("Your $t hits it ${mult(m)}", style = small, color = multColor(m)) }
-            s.theirThreats.forEach { (t, m) -> Text("Its $t hits you ${mult(m)}", style = small, color = Color(0xFFFF8A80)) }
-            if (s.myStrongTypes.isEmpty() && s.theirThreats.isEmpty()) Text("No type advantage either way", style = small)
+            opp?.species?.let { StatsLine("Its base stats", it) }
+            ProfileRows(c.opponentProfile)
+            c.oppStatusNotes.forEach { Text("${c.oppStatus!!.label}: $it", style = small, color = Color(0xFFFFD180)) }
+            c.summary?.let { s ->
+                s.myStrongTypes.forEach { (t, m) -> Text("Your $t hits it ${mult(m)}", style = small, color = multColor(m)) }
+                s.theirThreats.forEach { (t, m) -> Text("Its $t hits you ${mult(m)}", style = small, color = Color(0xFFFF8A80)) }
+                if (s.myStrongTypes.isEmpty() && s.theirThreats.isEmpty()) Text("No type advantage either way", style = small)
+            }
+            c.opponent2?.let { o2 ->
+                HorizontalDivider()
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalArrangement = Arrangement.spacedBy(4.dp),
+                    itemVerticalAlignment = Alignment.CenterVertically) {
+                    Text(o2.side.species?.name ?: "${o2.side.readAs} ?", style = MaterialTheme.typography.titleSmall, softWrap = false)
+                    o2.side.species?.types?.forEach { TypeChip(it) }
+                    o2.status?.let { StatusChip(it) }
+                }
+                o2.side.species?.let { StatsLine("Its base stats", it) }
+                ProfileRows(o2.profile)
+                o2.statusNotes.forEach { Text("${o2.status!!.label}: $it", style = small, color = Color(0xFFFFD180)) }
+            }
         }
         if (c.moves.isNotEmpty()) {
-            Text("Your moves", style = MaterialTheme.typography.labelLarge)
+            val second = c.opponent2?.side?.species?.name
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("Your moves" + (c.player?.species?.name?.takeIf { c.partner != null }?.let { " ($it)" } ?: ""),
+                    style = label, modifier = Modifier.weight(1f))
+                if (second != null) Text("vs ${c.opponent?.species?.name ?: "1"} · vs $second", style = MaterialTheme.typography.labelSmall)
+            }
             c.moves.forEach { e ->
                 // short columns never wrap; the name takes what's left and ends in … if it must
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     Text(e.move.name, style = small, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
                     TypeChip(e.move.type)
-                    Text(when (e.move.category) { "physical" -> "Phys"; "special" -> "Spec"; "status" -> "Stat"; else -> "?" },
-                        style = small, softWrap = false)
+                    Text(categoryLabel(e.move.category), style = small, softWrap = false)
                     Text(e.move.power?.toString() ?: "—", style = small, softWrap = false, modifier = Modifier.widthIn(min = 24.dp))
                     Text(if (e.move.category == "status") "" else mult(e.multiplier), color = multColor(e.multiplier),
                         fontWeight = FontWeight.Bold, softWrap = false, modifier = Modifier.widthIn(min = 28.dp))
@@ -195,38 +213,137 @@ fun BattleCardContent(c: BattleCard, sprite: Bitmap?, modifier: Modifier = Modif
                     if (c.myStatus != null && e.move.category != "status")
                         Text(if (e.adjusted != e.multiplier) "→ ${mult(e.adjusted)}" else "", color = multColor(e.adjusted),
                             fontWeight = FontWeight.Bold, softWrap = false, modifier = Modifier.widthIn(min = 36.dp))
+                    e.vsSecond?.let { v ->
+                        Text(if (e.move.category == "status") "" else mult(v), color = multColor(v),
+                            fontWeight = FontWeight.Bold, softWrap = false, modifier = Modifier.widthIn(min = 28.dp))
+                    }
                 }
             }
         }
-        opp?.species?.let { s ->
-            StatsLine("Its base stats", s)
-            if (c.oppAbilities.isNotEmpty()) {
-                Text(if (c.oppAbilities.size == 1) "Ability" else "Ability (one of)", style = MaterialTheme.typography.labelLarge)
-                c.oppAbilities.forEach { a ->
-                    Text(buildAnnotatedString {
-                        withStyle(SpanStyle(fontWeight = FontWeight.Bold)) { append(a.name) }
-                        if (a.hidden) append(" (hidden)")
-                        a.text?.let { append(" — $it") }
-                    }, style = small)
-                }
+        if (!c.afterBattle) {
+            val o2 = c.opponent2?.side?.species
+            opp?.species?.let { s ->
+                AbilityList(c.oppAbilities, if (o2 != null) "${s.name}'s ability" else "Its ability", small)
+                EvoLinesText(s.evolutionLines, s.name, small)
             }
-            if (s.evolutionLine.size > 1) Text(s.evolutionLine.joinToString(" → "), style = small)
+            o2?.let { s ->
+                AbilityList(c.opp2Abilities, "${s.name}'s ability", small)
+                EvoLinesText(s.evolutionLines, s.name, small)
+            }
         }
         val me = c.player
         when {
             c.nicknamePrompt != null -> NicknamePrompt(c.nicknamePrompt)
             me?.species != null -> {
+                HorizontalDivider()
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalArrangement = Arrangement.spacedBy(4.dp),
                     itemVerticalAlignment = Alignment.CenterVertically) {
-                    Text("You: ${me.species.name}", style = MaterialTheme.typography.labelLarge, softWrap = false)
+                    Text("You: ${me.species.name}", style = label, softWrap = false)
                     me.species.types.forEach { TypeChip(it) }
                     c.myStatus?.let { StatusChip(it) }
                 }
                 c.myStatusNotes.forEach { Text("${c.myStatus!!.label}: $it", style = small, color = Color(0xFFFFD180)) }
                 StatsLine("Your base stats", me.species)
+                AbilityList(c.myAbilities, "Your ability", small)
+                EvoLinesText(me.species.evolutionLines, me.species.name, small)
+            }
+        }
+        c.partner?.let { p ->
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalArrangement = Arrangement.spacedBy(4.dp),
+                itemVerticalAlignment = Alignment.CenterVertically) {
+                Text("Partner: ${p.species?.name ?: p.readAs}", style = label, softWrap = false)
+                p.species?.types?.forEach { TypeChip(it) }
             }
         }
     }
+}
+
+private fun categoryLabel(c: String) = when (c) { "physical" -> "Phys"; "special" -> "Spec"; "status" -> "Stat"; else -> "?" }
+
+/** Weakness rows: multiplier, then the attacking types. */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun ProfileRows(profile: Map<Float, List<String>>) = profile.forEach { (m, types) ->
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Text(mult(m), color = multColor(m), fontWeight = FontWeight.Bold, modifier = Modifier.width(32.dp))
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            types.forEach { TypeChip(it) }
+        }
+    }
+}
+
+@Composable
+private fun AbilityList(list: List<AbilityInfo>, title: String, style: androidx.compose.ui.text.TextStyle) {
+    if (list.isEmpty()) return
+    Text(if (list.size == 1) title else "$title (one of)", style = MaterialTheme.typography.labelLarge)
+    list.forEach { a ->
+        Text(buildAnnotatedString {
+            withStyle(SpanStyle(fontWeight = FontWeight.Bold)) { append(a.name) }
+            if (a.hidden) append(" (hidden)")
+            a.text?.let { append(" — $it") }
+        }, style = style)
+    }
+}
+
+/** "Wants to learn": the new move against the four it knows; STAB = same type as my Pokémon (×1.5). */
+@Composable
+private fun LearnSection(l: LearnInfo, mine: String?, small: androidx.compose.ui.text.TextStyle) {
+    Text("${mine ?: "Your Pokémon"} wants to learn", style = MaterialTheme.typography.labelLarge)
+    LearnRow(l.move, l.stab, small, highlight = true)
+    if (l.current.isNotEmpty()) {
+        Text("Moves it knows", style = MaterialTheme.typography.labelMedium)
+        l.current.forEachIndexed { i, m -> LearnRow(m, l.currentStab.getOrElse(i) { false }, small, highlight = false) }
+    }
+    Text("STAB: same type as your Pokémon, ×1.5 damage", style = MaterialTheme.typography.labelSmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant)
+    HorizontalDivider()
+}
+
+@Composable
+private fun LearnRow(m: Move, stab: Boolean, small: androidx.compose.ui.text.TextStyle, highlight: Boolean) =
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        Text(m.name, style = small, fontWeight = if (highlight) FontWeight.Bold else null, maxLines = 1,
+            overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+        TypeChip(m.type)
+        Text(categoryLabel(m.category), style = small, softWrap = false)
+        Text(m.power?.toString() ?: "—", style = small, softWrap = false, modifier = Modifier.widthIn(min = 24.dp))
+        Text(if (stab) "STAB" else "", style = small, color = Color(0xFF7CFC8A), softWrap = false, modifier = Modifier.widthIn(min = 32.dp))
+    }
+
+/** Switch screen: each party Pokémon's best hit on the opponent(s) and the opponent's best hit on it. */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun PartySection(c: BattleCard, small: androidx.compose.ui.text.TextStyle) {
+    Text("Switch in", style = MaterialTheme.typography.labelLarge)
+    c.party.forEach { p ->
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalArrangement = Arrangement.spacedBy(2.dp),
+            itemVerticalAlignment = Alignment.CenterVertically) {
+            Text(p.species?.name ?: "${p.name} ?", style = small, fontWeight = FontWeight.Bold, softWrap = false)
+            p.species?.types?.forEach { TypeChip(it) }
+            p.matches.forEach { m ->
+                val vs = if (p.matches.size > 1) " ${m.opponent}" else ""
+                Text("hits$vs ${mult(m.bestHit.second)}", style = small, color = multColor(m.bestHit.second), softWrap = false)
+                Text("takes ${mult(m.worstTaken.second)}", style = small,
+                    color = if (m.worstTaken.second >= 2f) Color(0xFFFF8A80) else if (m.worstTaken.second < 1f) Color(0xFF7CFC8A) else Color.Unspecified,
+                    softWrap = false)
+            }
+        }
+    }
+    HorizontalDivider()
+}
+
+/** Evolution lines with the Pokémon's own stage in bold. */
+@Composable
+private fun EvoLinesText(lines: List<String>, current: String, style: androidx.compose.ui.text.TextStyle) = lines.forEach { line ->
+    Text(buildAnnotatedString {
+        line.split(" → ").forEachIndexed { i, stage ->
+            if (i > 0) append(" → ")
+            stage.split(" / ").forEachIndexed { j, name ->
+                if (j > 0) append(" / ")
+                if (name == current) withStyle(SpanStyle(fontWeight = FontWeight.Bold)) { append(name) } else append(name)
+            }
+        }
+    }, style = style)
 }
 
 @Composable

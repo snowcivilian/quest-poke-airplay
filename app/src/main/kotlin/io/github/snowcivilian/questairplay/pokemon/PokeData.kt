@@ -21,8 +21,22 @@ data class Species(
     val abilities: List<String>,
     val hidden: String?,
     val catchRate: Int,
-    val evolutionLine: List<String>,
-)
+    /** Every path from the first stage to a last stage; more than one for split evolutions. */
+    val evolutionPaths: List<List<String>>,
+) {
+    /** Paths grouped for display: "Ralts → Kirlia → Gardevoir / Gallade"; empty if it doesn't evolve. */
+    val evolutionLines: List<String> get() = EvoLines.format(evolutionPaths)
+}
+
+/** Formats evolution paths, merging branches that split only at the last stage (S4). Pure. */
+object EvoLines {
+    fun format(paths: List<List<String>>): List<String> {
+        if (paths.all { it.size < 2 }) return emptyList()
+        return paths.groupBy { it.dropLast(1) }.map { (stem, ends) ->
+            (stem + ends.joinToString(" / ") { it.last() }).joinToString(" → ")
+        }
+    }
+}
 
 data class Move(val name: String, val type: String, val category: String, val power: Int?)
 
@@ -59,7 +73,7 @@ class PokeData(
                         s.getInt("id"), s.getString("name"), s.getJSONArray("types").strings(),
                         s.getJSONArray("stats").let { st -> (0 until st.length()).map(st::getInt) },
                         s.getJSONArray("abilities").strings(), s.optString("hidden").ifEmpty { null },
-                        s.getInt("catchRate"), s.getJSONArray("evo").strings(),
+                        s.getInt("catchRate"), s.getJSONArray("evo").let { a -> (0 until a.length()).map { a.getJSONArray(it).strings() } },
                     )
                 }
             }

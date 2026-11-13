@@ -11,9 +11,18 @@ import com.google.mlkit.vision.text.TextRecognition
 import com.google.mlkit.vision.text.latin.TextRecognizerOptions
 import java.util.concurrent.TimeUnit
 
+/** A line of text and where it is, as fractions (0..1) of the image it was read from. */
+data class TextLine(val text: String, val left: Float, val top: Float, val right: Float, val bottom: Float) {
+    val cx get() = (left + right) / 2
+    val cy get() = (top + bottom) / 2
+    val height get() = bottom - top
+}
+
 /** Reads text from a bitmap (S4). Blocking; call off the main and GL threads. */
 interface TextReader {
     fun read(bitmap: Bitmap): String
+    /** Each line with its position, for reading a whole screen at once. */
+    fun lines(bitmap: Bitmap): List<TextLine>
 }
 
 /**
@@ -24,6 +33,13 @@ class MlKitTextReader : TextReader {
     private val client = TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)
     override fun read(bitmap: Bitmap): String =
         Tasks.await(client.process(InputImage.fromBitmap(bitmap, 0)), 3, TimeUnit.SECONDS).text
+
+    override fun lines(bitmap: Bitmap): List<TextLine> {
+        val w = bitmap.width.toFloat(); val h = bitmap.height.toFloat()
+        return Tasks.await(client.process(InputImage.fromBitmap(bitmap, 0)), 3, TimeUnit.SECONDS).textBlocks
+            .flatMap { it.lines }
+            .mapNotNull { l -> l.boundingBox?.let { b -> TextLine(l.text, b.left / w, b.top / h, b.right / w, b.bottom / h) } }
+    }
 }
 
 /** Renders game-like blocky text and reads it back, to check OCR works on this device. */
