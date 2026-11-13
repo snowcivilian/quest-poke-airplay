@@ -5,7 +5,9 @@
 # After a Quest reboot, Wi-Fi adb is off: plug in USB once and run `adb tcpip 5555`.
 set -euo pipefail
 cd "$(dirname "$0")/.."
-TYPE="${1:-release}"; IP="${2:-${QUEST_IP:-<quest-ip>}}"
+# Quest IP: argument, else $QUEST_IP, else `questIp=` in the gitignored local.properties.
+TYPE="${1:-release}"; IP="${2:-${QUEST_IP:-$(sed -n 's/^questIp=//p' local.properties 2>/dev/null)}}"
+[[ -n "$IP" ]] || { echo "Set the Quest's IP: pass it, export QUEST_IP, or add questIp=<ip> to local.properties" >&2; exit 1; }
 export JAVA_HOME="${JAVA_HOME:-/opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home}"
 export ANDROID_HOME="${ANDROID_HOME:-$HOME/Library/Android/sdk}"
 export ANDROID_SERIAL="$IP:5555"
