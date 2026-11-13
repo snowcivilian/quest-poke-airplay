@@ -1,6 +1,6 @@
 # Quest AirPlay Receiver
 
-A free, sideloaded AirPlay receiver for **Meta Quest 3**, built to play iPhone games (Delta) on the headset well: correct aspect ratio with no black bars, in-headset volume that sticks, low delay, and an immersive theater mode.
+A free, sideloaded AirPlay receiver for **Meta Quest 3**, built to play iPhone games (Delta) on the headset well: correct aspect ratio with no black bars, in-headset volume that sticks, low delay, an immersive theater mode, and a **Pokémon battle helper** that reads the battle off the screen and shows type matchups next to the game.
 
 It's a fork of [jqssun/android-airplay-server](https://github.com/jqssun/android-airplay-server) (GPL-3.0), which does the AirPlay work through [UxPlay](https://github.com/FDH2/UxPlay). Full spec: [docs/REQUIREMENTS.md](docs/REQUIREMENTS.md).
 
@@ -19,6 +19,39 @@ It's a fork of [jqssun/android-airplay-server](https://github.com/jqssun/android
 | **Stats overlay** | Upstream's FPS/bitrate/audio overlay plus decode-to-display delay, the active preset and the measured game-box shape. |
 | **CRT scanlines** | Optional scanlines matched to the system's native line count, with an intensity slider. |
 | **Theater mode** | Immersive big screen (Meta Spatial SDK). Dark room or passthrough. Adjustable screen height, distance, elevation and curve. Recenter by holding the Meta button. Presets and scanlines apply here too. The controls panel can be grabbed, moved, resized and minimized. |
+
+### Pokémon battle helper
+
+An optional card that watches the mirrored game, recognizes a Pokémon battle and shows what you'd otherwise look up on your phone. It reads the screen with on-device text recognition. It needs no ROM access, no save-file access and no internet, and it never touches the game.
+
+What the card shows during a battle:
+
+- **Who's fighting:** both Pokémon's names and types, base stats, possible abilities with what each one does, and evolution lines.
+- **Opponent's weaknesses and resistances,** grouped by ×4, ×2, ×½, ×¼ and ×0.
+- **Matchup summary:** which of your Pokémon's types hit the opponent hard, and which of the opponent's types threaten you.
+- **Your moves:** when the FIGHT menu is open, each move's type, physical or special, power, and its multiplier against the current opponent (against both opponents in a double battle).
+- **Wild battles:** the catch rate.
+- **Status conditions** on either side, and what they change.
+- **Double battles:** both opponents and your partner.
+- **Switch screen:** each party Pokémon's best hit on the opponent and the opponent's best hit on it.
+- **Learning a move:** the new move compared with the four your Pokémon already knows, with same-type (STAB) moves marked.
+
+**Data generation:** choose Gen 3, Gen 4, Gen 5 or Latest for each game. This sets the type chart, types, move categories and abilities, so ROM hacks that use newer mechanics (Fairy type, the physical/special split) get correct matchups. The data comes from [PokéAPI](https://github.com/PokeAPI/pokeapi) and is bundled in the app.
+
+**Nicknames:** if your Pokémon has a nickname, the card asks once which species it is and remembers it for that game.
+
+**Supported games**, all English versions:
+
+| Game profile | Status |
+| --- | --- |
+| Diamond / Pearl / Platinum | Works. Tested live on Platinum, including doubles. Needs the DS preset with both screens. |
+| HeartGold / SoulSilver | Same screen layout as Platinum, not yet tested. |
+| FireRed / LeafGreen, Ruby / Sapphire / Emerald, FireRed- and Emerald-based hacks | Experimental: the screen layout is a first guess and needs tuning. |
+| Black / White, Black 2 / White 2 | Not yet: no screen layout. |
+
+**Turning it on:** *Settings → Pokémon battle helper*. Pick your game there. The Poké Ball button next to theater and fullscreen shows or hides the card. The card can sit in the top left or top right of the panel, or open in its own window, and it also floats beside the screen in theater mode. When the helper is off, no recognition runs at all.
+
+**Tuning a game's layout:** each game's screen regions are data in [`profiles.json`](app/src/main/assets/pokemon/profiles.json). *Calibration mode* draws them over the live game and saves frames on the headset, and *Test text reading* shows what the text recognition sees.
 
 ### Using it
 
@@ -124,7 +157,7 @@ If a system crops wrong or isn't auto-detected, turn on *Show stats overlay* and
 
 ## Status
 
-All required milestones (M0–M6, R1–R10) are built and in use. Stretch goals S1 (split DS screens) and S4 (Pokémon battle helper) are in progress on their own branches; S3 (extra theater rooms) was dropped. What still needs checking against the spec, and the known issues, are in [docs/TESTING.md](docs/TESTING.md).
+All required milestones (M0–M6, R1–R10) are built and in use. Stretch goals S1 (split DS screens) and S4 (Pokémon battle helper) are merged and in use. S4 is still being tuned on more games. S3 (extra theater rooms) was dropped. What still needs checking against the spec, and the known issues, are in [docs/TESTING.md](docs/TESTING.md).
 
 ## Merging upstream
 
