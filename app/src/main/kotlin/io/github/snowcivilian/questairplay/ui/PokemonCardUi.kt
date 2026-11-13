@@ -172,6 +172,7 @@ fun BattleCardContent(c: BattleCard, sprite: Bitmap?, modifier: Modifier = Modif
                     }
                 }
             }
+            opp?.species?.let { StatsLine("Its base stats", it) }
             ProfileRows(c.opponentProfile)
             c.oppStatusNotes.forEach { Text("${c.oppStatus!!.label}: $it", style = small, color = Color(0xFFFFD180)) }
             c.summary?.let { s ->
@@ -187,9 +188,9 @@ fun BattleCardContent(c: BattleCard, sprite: Bitmap?, modifier: Modifier = Modif
                     o2.side.species?.types?.forEach { TypeChip(it) }
                     o2.status?.let { StatusChip(it) }
                 }
+                o2.side.species?.let { StatsLine("Its base stats", it) }
                 ProfileRows(o2.profile)
                 o2.statusNotes.forEach { Text("${o2.status!!.label}: $it", style = small, color = Color(0xFFFFD180)) }
-                o2.side.species?.let { StatsLine("Its base stats", it) }
             }
         }
         if (c.moves.isNotEmpty()) {
@@ -219,10 +220,16 @@ fun BattleCardContent(c: BattleCard, sprite: Bitmap?, modifier: Modifier = Modif
                 }
             }
         }
-        if (!c.afterBattle) opp?.species?.let { s ->
-            StatsLine("Its base stats", s)
-            AbilityList(c.oppAbilities, "Its ability", small)
-            EvoLinesText(s.evolutionLines, s.name, small)
+        if (!c.afterBattle) {
+            val o2 = c.opponent2?.side?.species
+            opp?.species?.let { s ->
+                AbilityList(c.oppAbilities, if (o2 != null) "${s.name}'s ability" else "Its ability", small)
+                EvoLinesText(s.evolutionLines, s.name, small)
+            }
+            o2?.let { s ->
+                AbilityList(c.opp2Abilities, "${s.name}'s ability", small)
+                EvoLinesText(s.evolutionLines, s.name, small)
+            }
         }
         val me = c.player
         when {

@@ -71,6 +71,46 @@ class SceneReadingTest {
         assertTrue(SceneReading.looksLikeBattle(s))
     }
 
+    private fun box(n: String, cy: Float, status: Status? = null) = BoxRead(n, gen4.speciesNamed(n), 0.2f, cy, status)
+
+    @Test fun slotsLetEitherSideGoDownToOne() {
+        val top = SideSlots(); val bottom = SideSlots()
+        repeat(2) { top.update(listOf(box("Furret", 0.06f), box("Linoone", 0.21f))); bottom.update(listOf(box("Furret", 0.06f), box("Linoone", 0.21f))) }
+        // Linoone (lower slot) faints in one battle, Furret (upper slot) in the other
+        repeat(2) { top.update(listOf(box("Furret", 0.06f))); bottom.update(listOf(box("Linoone", 0.21f))) }
+        assertEquals(listOf("Furret", "Linoone"), top.current().map { it.name })      // not gone yet: one missed read isn't a faint
+        top.update(listOf(box("Furret", 0.06f))); bottom.update(listOf(box("Linoone", 0.21f)))
+        assertEquals(listOf("Furret"), top.current().map { it.name })
+        assertEquals(listOf("Linoone"), bottom.current().map { it.name })
+    }
+
+    @Test fun slotsKeepSpeciesThroughMisreadsAndTakeSwitchIns() {
+        val s = SideSlots()
+        s.update(listOf(box("Furret", 0.06f), box("Linoone", 0.21f)))
+        s.update(listOf(BoxRead("Lirnoane", null, 0.2f, 0.22f), box("Furret", 0.06f)))   // misread, slightly moved
+        assertEquals(listOf("Furret", "Linoone"), s.current().map { it.species?.name })
+        repeat(5) { s.update(emptyList()) }                                              // animation: nothing read, nothing dropped
+        assertEquals(2, s.current().size)
+        s.update(listOf(box("Furret", 0.06f), box("Staravia", 0.21f)))                    // trainer sends in another
+        assertEquals(listOf("Furret", "Staravia"), s.current().map { it.species?.name })
+    }
+
+    @Test fun slotBadgesAreDebounced() {
+        val s = SideSlots()
+        s.update(listOf(box("Furret", 0.06f, Status.PAR)))
+        assertNull(s.current().single().status)
+        s.update(listOf(box("Furret", 0.06f, Status.PAR)))
+        assertEquals(Status.PAR, s.current().single().status)
+    }
+
+    @Test fun doublesWithOneOpponentLeftIsStillDoubles() {
+        val lines = listOf(line("Furret", 0.01f, 0.03f, 0.17f, 0.09f), line("FLuB2", 0.29f, 0.03f, 0.41f, 0.09f),
+            line("Sceptile", 0.56f, 0.48f, 0.73f, 0.55f), line("Lu37", 0.84f, 0.50f, 0.93f, 0.53f), line("HPC", 0.70f, 0.57f, 0.74f, 0.60f),
+            line("Wibrava", 0.58f, 0.64f, 0.73f, 0.69f), line("Lu34", 0.86f, 0.65f, 0.96f, 0.68f))
+        assertTrue(SceneReading.isDouble(SceneReading.battle(lines, gen4, ::nick, 0.76f)))
+        assertTrue(!SceneReading.plausibleName("HPC") && !SceneReading.plausibleName("B") && SceneReading.plausibleName("LEAFY"))
+    }
+
     @Test fun overworldTextIsNoBattle() {
         val s = SceneReading.battle(listOf(line("Professor Rowan's lab", 0.1f, 0.3f, 0.9f, 0.36f)), gen4, ::nick, 0.76f)
         assertTrue(s.opp.isEmpty() && s.mine.isEmpty())

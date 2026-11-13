@@ -98,7 +98,11 @@ object PokemonEngine : GameFrameSink {
         var double = false
         var opp2: Side? = null
         var partner: Side? = null
-        val opp2Status = StatusDebounce()
+        /** Doubles: each side's boxes by slot, so one fainting on either side leaves the other in place. */
+        val oppSlots = SideSlots()
+        val mySlots = SideSlots()
+        var oppSlotStatus: List<Status?> = emptyList()
+        var mySlotStatus: Status? = null
         // switch screen
         var bottomAt = 0L
         var party: List<PartyRead> = emptyList()
@@ -225,7 +229,7 @@ object PokemonEngine : GameFrameSink {
         val scene = lastScene?.takeIf { now - lastSceneAt < 2_000 }
         val colour = BattleDetector.observe(f, layout)
         val obs = if (scene != null && SceneReading.looksLikeBattle(scene))
-            colour.copy(oppBox = true, playerBox = true, oppBars = maxOf(colour.oppBars, scene.opp.size)) else colour
+            colour.copy(oppBox = true, playerBox = true, oppBars = if (SceneReading.isDouble(scene)) maxOf(colour.oppBars, 2) else colour.oppBars) else colour
         if (obs != lastObs) { lastObs = obs; Log.d(TAG, "seen: $obs colour=$colour (${profile.id})") }
         val phase = tracker.update(obs)
         val s0 = session
@@ -309,8 +313,11 @@ object PokemonEngine : GameFrameSink {
                     nick != null -> Side(playerName, data.speciesNamed(nick))
                     else -> Side(playerName, null)
                 }
-                s.prompt = if (s.player?.species == null) playerName else null
+                s.prompt = if (s.player?.species == null && SceneReading.plausibleName(playerName)) playerName else null
             }
+            // the whole-screen read covers a fixed spot that read junk (or a layout that isn't quite singles)
+            scene?.opp?.singleOrNull()?.takeIf { it.species != null && s.opp?.species == null }?.let { s.opp = Side(it.name, it.species) }
+            scene?.mine?.singleOrNull()?.takeIf { it.species != null && s.player?.species == null }?.let { s.player = Side(it.name, it.species); s.prompt = null }
             Log.d(TAG, "names: opp=\"$oppText\"->${s.opp?.species?.name} player=\"$playerText\"->${s.player?.species?.name}")
         }
         if (s.wild == null && s.textChecks < 8) {
@@ -351,13 +358,14 @@ object PokemonEngine : GameFrameSink {
             // badge found anywhere in the name box by the whole-screen read; else the box's badge spot
             val sceneOpp = scene?.opp?.firstOrNull()?.status
             val sceneMine = scene?.mine?.firstOrNull { it.name == s.player?.readAs }?.status ?: scene?.mine?.firstOrNull()?.status
-            val opp = sceneOpp ?: if (s.double) null else StatusConditions.parse(ocr(f, l.oppStatus ?: l.oppName, 3))
-            val mine = sceneMine ?: if (s.double) null else StatusConditions.parse(ocr(f, l.playerStatus ?: l.playerName, 3))
-            val before = Triple(s.oppStatus.current, s.myStatus.current, s.opp2Status.current)
-            s.oppStatus.update(opp); s.myStatus.update(mine)
-            if (s.double) s.opp2Status.update(scene?.opp?.getOrNull(1)?.status)
-            if (before != Triple(s.oppStatus.current, s.myStatus.current, s.opp2Status.current))
-                Log.d(TAG, "status: opp=${s.oppStatus.current} mine=${s.myStatus.current} opp2=${s.opp2Status.current}")
+            val before = Triple(statusOf(s, 0), statusOf(s, -1), statusOf(s, 1))
+            if (!s.double) {   // doubles: the slots debounce their own badges
+                val opp = sceneOpp ?: StatusConditions.parse(ocr(f, l.oppStatus ?: l.oppName, 3))
+                val mine = sceneMine ?: StatusConditions.parse(ocr(f, l.playerStatus ?: l.playerName, 3))
+                s.oppStatus.update(opp); s.myStatus.update(mine)
+            }
+            if (before != Triple(statusOf(s, 0), statusOf(s, -1), statusOf(s, 1)))
+                Log.d(TAG, "status: opp=${statusOf(s, 0)} mine=${statusOf(s, -1)} opp2=${statusOf(s, 1)}")
         }
         // switch screen: my party's names on the bottom screen (outside the FIGHT menu)
         if (!s.fight && now - s.bottomAt > SCENE_EVERY_MS) {
@@ -385,12 +393,19 @@ object PokemonEngine : GameFrameSink {
         _card.value = BattleCards.build(data, if (s.double) BattlePhase.DOUBLE else phase,
             if (after) null else s.opp, s.player, s.wild,
             if (s.fight && !after) s.moves else emptyList(), s.prompt,
-            oppStatus = if (after) null else s.oppStatus.current, myStatus = s.myStatus.current,
-            opponent2 = if (after || !s.double) null else s.opp2, opp2Status = s.opp2Status.current,
+            oppStatus = if (after) null else statusOf(s, 0), myStatus = statusOf(s, -1),
+            opponent2 = if (after || !s.double) null else s.opp2, opp2Status = statusOf(s, 1),
             partner = if (s.double) s.partner else null,
             party = if (after) emptyList() else s.party,
             learning = learning, knownMoves = s.learnKnown.ifEmpty { s.moves.filter { it.name != UNREAD_MOVE } },
             afterBattle = after)
+    }
+
+    /** Badge of opponent slot [i] (0, 1), or mine (-1); singles use the debouncers, doubles the slots. */
+    private fun statusOf(s: Session, i: Int): Status? = when {
+        !s.double -> when (i) { 0 -> s.oppStatus.current; -1 -> s.myStatus.current; else -> null }
+        i < 0 -> s.mySlotStatus
+        else -> s.oppSlotStatus.getOrNull(i)
     }
 
     private fun wildFrom(text: String): Boolean? {
@@ -404,18 +419,25 @@ object PokemonEngine : GameFrameSink {
 
     private val CHOOSER = Regex("what\\s+will\\s+(.+?)\\s+do", RegexOption.IGNORE_CASE)
 
-    /** Doubles: both opponents and both of mine from the whole-screen read; mine in the FIGHT menu is the one asked "What will X do?". */
+    /**
+     * Doubles: both sides from the whole-screen read, tracked by slot so either side can be down to
+     * one (in either slot). Mine in the FIGHT menu is the one asked "What will X do?".
+     */
     private fun applyDouble(sc: BattleScene, data: PokeData, profile: GameProfile, s: Session) {
-        fun side(b: BoxRead, old: Side?) = if (b.species == null && old?.species != null && old.readAs == b.name) old else Side(b.name, b.species)
-        sc.opp.getOrNull(0)?.let { s.opp = side(it, s.opp) }
-        sc.opp.getOrNull(1)?.let { s.opp2 = side(it, s.opp2) }
-        if (sc.mine.isEmpty()) return
+        val opps = s.oppSlots.update(sc.opp)
+        s.opp = opps.getOrNull(0)?.let { Side(it.name, it.species) }
+        s.opp2 = opps.getOrNull(1)?.let { Side(it.name, it.species) }
+        s.oppSlotStatus = opps.map { it.status }
+        val mine = s.mySlots.update(sc.mine)
+        if (mine.isEmpty()) return
         val chooser = CHOOSER.find(sc.message)?.groupValues?.get(1)?.let { c -> NameReading.candidates(c).firstOrNull() }
-        val active = sc.mine.firstOrNull { b -> chooser != null && NameMatcher.normalize(b.name) == NameMatcher.normalize(chooser) }
-            ?: sc.mine.firstOrNull { it.name == s.player?.readAs } ?: sc.mine.first()
-        s.player = side(active, s.player)
-        s.prompt = if (s.player?.species == null) s.player?.readAs else null
-        s.partner = sc.mine.firstOrNull { it !== active }?.let { side(it, s.partner) }
+        fun same(a: BoxRead, name: String?) = name != null &&
+            (NameMatcher.normalize(a.name) == NameMatcher.normalize(name) || a.species?.name?.let { NameMatcher.normalize(it) == NameMatcher.normalize(name) } == true)
+        val active = mine.firstOrNull { same(it, chooser) } ?: mine.firstOrNull { same(it, s.player?.species?.name ?: s.player?.readAs) } ?: mine.first()
+        s.player = Side(active.name, active.species)
+        s.mySlotStatus = active.status
+        s.prompt = if (active.species == null && SceneReading.plausibleName(active.name)) active.name else null
+        s.partner = mine.firstOrNull { it !== active }?.let { Side(it.name, it.species) }
     }
 
     /** OCR a whole screen into positioned lines, scaled so text is big enough to read. */

@@ -27,7 +27,13 @@ object SceneReading {
     /** The "HP" label by each HP bar, often read with a stray letter ("HPD", "HPI", "MPI"); never a name. */
     private val HP_LABEL = Regex("^[HM][PA][A-Z0-9]?$", RegexOption.IGNORE_CASE)
 
-    private fun isHpLabel(text: String) = HP_LABEL.matches(text.trim())
+    fun isHpLabel(text: String) = HP_LABEL.matches(text.trim())
+
+    /** Worth asking "which Pokémon is X?" about: a real-looking name, not a misread label. */
+    fun plausibleName(text: String) = text.count { it.isLetter() } >= 3 && !isHpLabel(text)
+
+    /** Two boxes on either side: a double battle, even when the other side is down to one. */
+    fun isDouble(s: BattleScene) = s.opp.size >= 2 || s.mine.size >= 2
 
     /**
      * Name boxes: lines with a level; the name is on the same line or the nearest line just left
@@ -106,4 +112,40 @@ object SceneReading {
     fun learning(message: String, data: PokeData): Move? = LEARN.firstNotNullOfOrNull { r ->
         r.findAll(message).firstNotNullOfOrNull { m -> data.moveMatcher.match(m.groupValues[1].trim())?.let { data.moveNamed(it.name) } }
     }
+}
+
+/**
+ * One side's name boxes in a double battle, tracked by slot (S4). A box that's gone for
+ * [dropAfter] reads in a row has fainted; the other slot keeps its place, so one left on either
+ * side works. A new name in a slot is a switch-in. A misread name keeps the slot's last species,
+ * and each slot's badge is debounced. Reads where the side shows no boxes at all (animations)
+ * don't count as misses. Pure.
+ */
+class SideSlots(private val dropAfter: Int = 3) {
+    private class Slot(var cy: Float, var box: BoxRead) {
+        var misses = 0
+        val status = StatusDebounce()
+    }
+    private val slots = mutableListOf<Slot>()
+
+    /** Boxes in this read -> the side's Pokémon now, top slot first, with debounced badges. */
+    fun update(boxes: List<BoxRead>): List<BoxRead> {
+        if (boxes.isNotEmpty()) {
+            val seen = mutableSetOf<Slot>()
+            for (b in boxes.sortedBy { it.cy }) {
+                val slot = slots.filter { it !in seen && abs(it.cy - b.cy) < 0.08f }.minByOrNull { abs(it.cy - b.cy) }
+                if (slot == null) { slots += Slot(b.cy, b).also { it.status.update(b.status); seen += it }; continue }
+                val keep = b.species == null && slot.box.species != null
+                slot.box = if (keep) b.copy(name = slot.box.name, species = slot.box.species) else b
+                slot.cy = b.cy; slot.misses = 0; slot.status.update(b.status); seen += slot
+            }
+            slots.filter { it !in seen }.forEach { it.misses++ }
+            slots.removeAll { it.misses >= dropAfter }
+        }
+        return current()
+    }
+
+    fun current(): List<BoxRead> = slots.sortedBy { it.cy }.map { it.box.copy(status = it.status.current) }
+
+    fun clear() = slots.clear()
 }

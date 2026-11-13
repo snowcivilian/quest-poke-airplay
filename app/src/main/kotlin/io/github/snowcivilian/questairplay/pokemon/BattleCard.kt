@@ -39,8 +39,9 @@ data class BattleCard(
     /** What the statuses change, one line each. */
     val oppStatusNotes: List<String> = emptyList(),
     val myStatusNotes: List<String> = emptyList(),
-    /** Abilities my Pokémon may have. */
+    /** Abilities my Pokémon may have, and the second opponent's. */
     val myAbilities: List<AbilityInfo> = emptyList(),
+    val opp2Abilities: List<AbilityInfo> = emptyList(),
     /** Double battles: the second opponent and my second Pokémon. */
     val opponent2: SecondOpponent? = null,
     val partner: Side? = null,
@@ -79,6 +80,7 @@ object BattleCards {
             nicknamePrompt = nicknamePrompt, demo = demo,
             oppAbilities = abilities(opp),
             myAbilities = abilities(mine),
+            opp2Abilities = abilities(opp2),
             oppStatus = oppStatus, myStatus = myStatus,
             oppStatusNotes = oppStatus?.let { StatusConditions.notes(it, data.gen, false, wild, opp?.abilities.orEmpty() + listOfNotNull(opp?.hidden)) }.orEmpty(),
             myStatusNotes = myStatus?.let { StatusConditions.notes(it, data.gen, true, wild, mine?.abilities.orEmpty() + listOfNotNull(mine?.hidden)) }.orEmpty(),
