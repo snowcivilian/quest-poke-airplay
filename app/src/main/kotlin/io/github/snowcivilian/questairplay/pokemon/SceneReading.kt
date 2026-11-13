@@ -32,6 +32,19 @@ object SceneReading {
     /** Worth asking "which Pokémon is X?" about: a real-looking name, not a misread label. */
     fun plausibleName(text: String) = text.count { it.isLetter() } >= 3 && !isHpLabel(text)
 
+    /** "What will X do?", as OCR reads it ("hat uill Sceptile do?"). */
+    private val CHOOSER = Regex("[wu]?ill\\s+(.+?)\\s+do\\b", RegexOption.IGNORE_CASE)
+
+    /**
+     * Which of my Pokémon the game is asking about ("What will X do?"): the box whose name or
+     * species is closest to X. Null when the message isn't that question (attacks, effects).
+     */
+    fun chooser(message: String, mine: List<BoxRead>): BoxRead? {
+        val asked = CHOOSER.find(message)?.groupValues?.get(1)?.let(NameMatcher::normalize)?.takeIf { it.length >= 2 } ?: return null
+        fun dist(b: BoxRead) = listOfNotNull(b.name, b.species?.name).minOf { NameMatcher.distance(NameMatcher.normalize(it), asked) }
+        return mine.minByOrNull(::dist)?.takeIf { dist(it) <= NameMatcher.maxDistance(asked.length) }
+    }
+
     /** Two boxes on either side: a double battle, even when the other side is down to one. */
     fun isDouble(s: BattleScene) = s.opp.size >= 2 || s.mine.size >= 2
 

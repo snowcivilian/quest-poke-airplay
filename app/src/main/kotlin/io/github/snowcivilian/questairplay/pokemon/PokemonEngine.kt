@@ -417,8 +417,6 @@ object PokemonEngine : GameFrameSink {
         }
     }
 
-    private val CHOOSER = Regex("what\\s+will\\s+(.+?)\\s+do", RegexOption.IGNORE_CASE)
-
     /**
      * Doubles: both sides from the whole-screen read, tracked by slot so either side can be down to
      * one (in either slot). Mine in the FIGHT menu is the one asked "What will X do?".
@@ -430,10 +428,10 @@ object PokemonEngine : GameFrameSink {
         s.oppSlotStatus = opps.map { it.status }
         val mine = s.mySlots.update(sc.mine)
         if (mine.isEmpty()) return
-        val chooser = CHOOSER.find(sc.message)?.groupValues?.get(1)?.let { c -> NameReading.candidates(c).firstOrNull() }
-        fun same(a: BoxRead, name: String?) = name != null &&
-            (NameMatcher.normalize(a.name) == NameMatcher.normalize(name) || a.species?.name?.let { NameMatcher.normalize(it) == NameMatcher.normalize(name) } == true)
-        val active = mine.firstOrNull { same(it, chooser) } ?: mine.firstOrNull { same(it, s.player?.species?.name ?: s.player?.readAs) } ?: mine.first()
+        // the one asked "What will X do?"; between those questions, whoever was asked last
+        fun same(a: BoxRead, p: Side?) = p != null && (a.name == p.readAs || (a.species != null && a.species == p.species))
+        val active = SceneReading.chooser(sc.message, mine) ?: mine.firstOrNull { same(it, s.player) } ?: mine.first()
+        if (active.name != s.player?.readAs) Log.d(TAG, "active: ${active.name} (${active.species?.name})")
         s.player = Side(active.name, active.species)
         s.mySlotStatus = active.status
         s.prompt = if (active.species == null && SceneReading.plausibleName(active.name)) active.name else null

@@ -111,6 +111,14 @@ class SceneReadingTest {
         assertTrue(!SceneReading.plausibleName("HPC") && !SceneReading.plausibleName("B") && SceneReading.plausibleName("LEAFY"))
     }
 
+    @Test fun chooserFromMisreadQuestion() {
+        val mine = listOf(box("Sceptile", 0.51f), BoxRead("Wibrava", gen4.speciesNamed("Vibrava"), 0.7f, 0.67f), BoxRead("LEAFY", gen4.speciesNamed("Sceptile"), 0.7f, 0.8f))
+        assertEquals("Sceptile", SceneReading.chooser("hat uill Sceptile do?", mine.take(2))?.name)
+        assertEquals("Wibrava", SceneReading.chooser("lhat will Vibrava do?", mine.take(2))?.name)
+        assertEquals("LEAFY", SceneReading.chooser("What will LEAFY do?", mine.drop(1))?.name)
+        assertNull(SceneReading.chooser("Sceptile used Leaf Blade!", mine))
+    }
+
     @Test fun overworldTextIsNoBattle() {
         val s = SceneReading.battle(listOf(line("Professor Rowan's lab", 0.1f, 0.3f, 0.9f, 0.36f)), gen4, ::nick, 0.76f)
         assertTrue(s.opp.isEmpty() && s.mine.isEmpty())
