@@ -12,3 +12,15 @@
 *.jks
 # quest fork: PokeAPI CSV download cache
 tools/pokedata/.cache/
+
+# quest fork: never commit
+*.keystore
+*.p12
+*.pem
+.env
+.env.*
+*.apk
+*.aab
+*.hprof
+logcat*.txt
+.kotlin/

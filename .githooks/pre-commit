@@ -1,0 +1,68 @@
+#!/usr/bin/env bash
+# Blocks commits that would publish something sensitive. This repo is public.
+# Enable once per clone:  git config core.hooksPath .githooks
+#
+# Checks:
+#   1. Author and committer email must be a GitHub noreply address.
+#   2. No keystores, keys, local config, env files, build outputs or logs.
+#   3. No new images outside app resources and fastlane (screenshots and captures stay local).
+#   4. Added lines must not contain home paths, LAN IPs or patterns listed in the untracked
+#      file .git/info/sensitive-patterns (one extended regex per line: your name, email, etc.).
+#   5. gitleaks secret scan of the staged changes, if gitleaks is installed.
+#
+# To commit an image on purpose, after checking it holds nothing personal or copyrighted:
+#   QUEST_ALLOW_IMAGES=1 git commit ...
+set -uo pipefail
+fail=0
+err() { echo "pre-commit: $*" >&2; fail=1; }
+
+# 1. Identity
+for who in AUTHOR COMMITTER; do
+    email=$(git var "GIT_${who}_IDENT" | sed -E 's/.*<([^>]*)>.*/\1/')
+    [[ "$email" == *@users.noreply.github.com ]] || err "$who email '$email' is not a GitHub noreply address. Run: git config user.email <id>+<user>@users.noreply.github.com"
+done
+
+staged=$(git diff --cached --name-only --diff-filter=ACMR)
+
+# 2. Files that must never be committed
+blocked='(\.jks|\.keystore|\.p12|\.pfx|\.pem|\.key|\.apk|\.aab|\.hprof)$|(^|/)local\.properties$|(^|/)\.env($|\.)|(^|/)(logcat|bugreport)[^/]*$|(^|/)google-services\.json$'
+while IFS= read -r f; do
+    [[ -n "$f" && "$f" =~ $blocked ]] && err "blocked file: $f"
+done <<< "$staged"
+
+# 3. Images (screenshots, captures, photos)
+if [[ "${QUEST_ALLOW_IMAGES:-}" != 1 ]]; then
+    added=$(git diff --cached --name-only --diff-filter=A)
+    while IFS= read -r f; do
+        [[ -z "$f" ]] && continue
+        if [[ "$f" =~ \.(png|jpe?g|gif|webp|heic|bmp|mp4|mov)$ ]] && ! [[ "$f" =~ ^(app/src/[^/]+/res/|fastlane/) ]]; then
+            err "new image/video outside app resources: $f (see header to allow on purpose)"
+        fi
+    done <<< "$added"
+fi
+
+# 4. Personal data in added lines
+added_lines=$(git diff --cached -U0 --no-color -- . ':(exclude).githooks/pre-commit' | grep -E '^\+[^+]' || true)
+check() { # regex, description
+    local hits
+    hits=$(grep -nE -- "$1" <<< "$added_lines" | head -3)
+    [[ -n "$hits" ]] && err "$2:"$'\n'"$hits"
+}
+check '/Users/[A-Za-z]|/home/[a-z]' "home directory path"
+check '(^|[^0-9.])(10\.[0-9]{1,3}|192\.168|172\.(1[6-9]|2[0-9]|3[01]))\.[0-9]{1,3}\.[0-9]{1,3}([^0-9]|$)' "LAN IP address"
+patterns="$(git rev-parse --git-common-dir)/info/sensitive-patterns"
+if [[ -f "$patterns" ]]; then
+    while IFS= read -r p; do
+        [[ -z "$p" || "$p" == \#* ]] && continue
+        grep -qiE -- "$p" <<< "$added_lines" && err "added lines match a pattern in $patterns"
+    done < "$patterns"
+fi
+
+# 5. Secrets
+if command -v gitleaks >/dev/null; then
+    gitleaks git --pre-commit --staged --redact --no-banner . >/dev/null 2>&1 || err "gitleaks found a possible secret. Run: gitleaks git --pre-commit --staged --redact -v ."
+else
+    echo "pre-commit: gitleaks not installed, secret scan skipped (brew install gitleaks)" >&2
+fi
+
+[[ $fail == 0 ]] || { echo "pre-commit: commit blocked. Fix the above; this repo is public." >&2; exit 1; }

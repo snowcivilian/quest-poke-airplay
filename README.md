@@ -2,7 +2,7 @@
 
 A free, sideloaded AirPlay receiver for **Meta Quest 3**, built to play iPhone games (Delta) on the headset well: correct aspect ratio with no black bars, in-headset volume that sticks, low delay, and an immersive theater mode.
 
-It's a private fork of [jqssun/android-airplay-server](https://github.com/jqssun/android-airplay-server) (GPL-3.0), which does the AirPlay work through [UxPlay](https://github.com/FDH2/UxPlay). Full spec: [docs/REQUIREMENTS.md](docs/REQUIREMENTS.md).
+It's a fork of [jqssun/android-airplay-server](https://github.com/jqssun/android-airplay-server) (GPL-3.0), which does the AirPlay work through [UxPlay](https://github.com/FDH2/UxPlay). Full spec: [docs/REQUIREMENTS.md](docs/REQUIREMENTS.md).
 
 **Setup:** Delta runs on the iPhone with a Bluetooth controller paired to the phone. The phone screen-mirrors to the Quest. Saves stay in Delta.
 
@@ -137,11 +137,18 @@ Conflicts should be limited to the `// quest fork` hooks listed above. Merge abo
 
 ## License and credits
 
-GPL-3.0, like upstream. This is a private build for personal use; if the APK is ever shared, its source must be shared with it.
+GPL-3.0, like upstream (see [LICENSE](LICENSE)). This is a modified version of [jqssun/android-airplay-server](https://github.com/jqssun/android-airplay-server), changed from November 2026 onward; every change and its date are in the git history, and changed upstream files are marked `// quest fork`. Anyone who shares a built APK must share its source too.
+
+Built on:
 
 - [jqssun/android-airplay-server](https://github.com/jqssun/android-airplay-server): the receiver this is built on
 - [UxPlay](https://github.com/FDH2/UxPlay): AirPlay/RAOP implementation
 - [FFmpeg](https://ffmpeg.org): ALAC audio decoding
+- [libplist](https://github.com/libimobiledevice/libplist), [OpenSSL](https://www.openssl.org): plist parsing and cryptography
+- [PokéAPI](https://github.com/PokeAPI/pokeapi): Pokémon type, stat, move and ability data (BSD-3-Clause, [license](app/src/main/assets/pokemon/LICENSE-POKEAPI.txt))
 - [Meta Spatial SDK](https://developers.meta.com/horizon/documentation/spatial-sdk/): theater mode
+- [ML Kit Text Recognition](https://developers.google.com/ml-kit/vision/text-recognition/v2/android): reading the battle screen
 
-Not affiliated with Apple or Meta.
+Full list with licenses: [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+
+Not affiliated with, endorsed by or sponsored by Apple, Meta, Nintendo, The Pokémon Company, GAME FREAK or the makers of Delta. AirPlay is a trademark of Apple Inc.; Meta Quest is a trademark of Meta Platforms, Inc.; Pokémon is a trademark of Nintendo, Creatures Inc. and GAME FREAK inc. No games, ROMs or game assets are included.
