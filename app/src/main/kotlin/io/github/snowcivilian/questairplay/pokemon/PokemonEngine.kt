@@ -168,6 +168,7 @@ object PokemonEngine : GameFrameSink {
         val scene = readScene(f, layout, data, profile)
         val ms = (System.nanoTime() - t0) / 1_000_000
         val party = layout.bottomScreen?.let { SceneReading.party(readLines(f, it), data) { n -> Nicknames.lookup(prefs, profile.id, n) } }
+        readLines(f, layout.topScreen).forEach { Log.d(TAG, "  line \"${it.text}\" x=%.2f-%.2f y=%.2f-%.2f".format(it.left, it.right, it.top, it.bottom)) }
         Log.i(TAG, "scene self-test on ${file.name} (${ms} ms): battle=${SceneReading.looksLikeBattle(scene)} " +
             "opp=${scene.opp.map { "${it.name}/${it.species?.name}/${it.status}" }} mine=${scene.mine.map { "${it.name}/${it.species?.name}/${it.status}" }} " +
             "msg=\"${scene.message}\" party=${party?.map { it.name }}")

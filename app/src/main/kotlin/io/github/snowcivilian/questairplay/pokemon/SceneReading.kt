@@ -19,9 +19,15 @@ data class PartyRead(val name: String, val species: Species?)
  * bottom of the top screen. Pure.
  */
 object SceneReading {
-    private val LEVEL_TOKEN = Regex("(^|\\s|\\S{0,2})L[VYU]\\.?:?\\s?[0-9ZOSIl]{1,3}(\\s|$)", RegexOption.IGNORE_CASE)
+    /** "Lv32" as OCR reads Platinum's level: Lv as Lu, digits as look-alike letters ("FLuB2" = ♀Lv32). */
+    private val LEVEL_TOKEN = Regex("(^|\\s|\\S{0,2})L[VYU]\\.?:?\\s?[0-9ZOSIlB]{1,3}(\\s|$)", RegexOption.IGNORE_CASE)
 
     fun hasLevel(text: String) = LEVEL_TOKEN.containsMatchIn(text)
+
+    /** The "HP" label by each HP bar, often read with a stray letter ("HPD", "HPI", "MPI"); never a name. */
+    private val HP_LABEL = Regex("^[HM][PA][A-Z0-9]?$", RegexOption.IGNORE_CASE)
+
+    private fun isHpLabel(text: String) = HP_LABEL.matches(text.trim())
 
     /**
      * Name boxes: lines with a level; the name is on the same line or the nearest line just left
@@ -31,11 +37,13 @@ object SceneReading {
         val upper = lines.filter { it.cy < messageTop }
         val boxes = mutableListOf<BoxRead>()
         for (lv in upper.filter { hasLevel(it.text) }) {
-            val own = NameReading.candidates(lv.text).firstOrNull()
+            val own = NameReading.candidates(lv.text).firstOrNull()?.takeIf { !isHpLabel(it) }
+            // the name is on the level's row, to its left (the HP label just below is closer, but never the name)
             val nameLine = if (own != null) lv else upper
-                .filter { it !== lv && !hasLevel(it.text) && NameReading.candidates(it.text).isNotEmpty() && StatusConditions.parse(it.text) == null }
-                .filter { abs(it.cy - lv.cy) < lv.height * 2.5f && it.cx < lv.cx + lv.height }
-                .minByOrNull { hypot(it.cx - lv.cx, (it.cy - lv.cy) * 2) } ?: continue
+                .filter { it !== lv && !hasLevel(it.text) && !isHpLabel(it.text) && StatusConditions.parse(it.text) == null &&
+                    NameReading.candidates(it.text).isNotEmpty() }
+                .filter { abs(it.cy - lv.cy) < maxOf(lv.height, it.height) * 0.7f && it.cx < lv.cx }
+                .minByOrNull { lv.cx - it.cx } ?: continue
             val name = NameReading.candidates(nameLine.text).firstOrNull() ?: continue
             val species = NameReading.match(data.speciesMatcher, nameLine.text)?.let { data.speciesNamed(it.name) }
                 ?: nickname(name)?.let(data::speciesNamed)

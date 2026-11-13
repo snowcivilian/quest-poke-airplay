@@ -104,7 +104,7 @@ object NameReading {
     private val GENDER_BEFORE_LEVEL = Regex("[♂♀](?=L[VYU]|\\d)", RegexOption.IGNORE_CASE)
     private val LEVEL = Regex("^((L[VYU]|LEVEL)\\.?:?\\d{0,3}|\\d{1,3})$", RegexOption.IGNORE_CASE)
     /** A level with a misread gender mark stuck on the front ("BLu36", "ŠLu36", "LuZ6"). */
-    private val GLUED_LEVEL = Regex("^.{0,2}L[VYU]\\.?:?[0-9ZOSIl]{1,3}$", RegexOption.IGNORE_CASE)
+    private val GLUED_LEVEL = Regex("^.{0,2}L[VYU]\\.?:?[0-9ZOSIlB]{1,3}$", RegexOption.IGNORE_CASE)
 
     /**
      * Whole line without level and gender marks first, then single words longest first, then

@@ -56,6 +56,21 @@ class SceneReadingTest {
         assertTrue(!SceneReading.looksLikeBattle(SceneReading.battle(columns, gen4, ::nick, 0.76f)))
     }
 
+    /** The Platinum double battle from the headset (Furret, Linoone vs Sceptile, Vibrava), HP labels misread. */
+    @Test fun realDoubleBattleIgnoresHpLabels() {
+        val lines = listOf(
+            line("Furret", 0.01f, 0.03f, 0.17f, 0.09f), line("FLuB2", 0.29f, 0.03f, 0.41f, 0.09f), line("HPD", 0.17f, 0.11f, 0.21f, 0.135f),
+            line("Linoone", 0.01f, 0.18f, 0.18f, 0.24f), line("Lu32", 0.29f, 0.18f, 0.41f, 0.24f), line("HPI", 0.17f, 0.26f, 0.21f, 0.29f),
+            line("Sceptile", 0.56f, 0.48f, 0.73f, 0.55f), line("ŠLu37", 0.78f, 0.48f, 0.95f, 0.55f), line("HPD", 0.70f, 0.57f, 0.74f, 0.60f),
+            line("ibrava", 0.59f, 0.64f, 0.74f, 0.70f), line("Lu34", 0.82f, 0.64f, 0.96f, 0.70f), line("MPI", 0.72f, 0.72f, 0.76f, 0.75f),
+            line("What will Sceptile do?", 0.04f, 0.80f, 0.6f, 0.87f),
+        )
+        val s = SceneReading.battle(lines, gen4, ::nick, 0.76f)
+        assertEquals(listOf("Furret", "Linoone"), s.opp.map { it.species?.name })
+        assertEquals(listOf("Sceptile", "Vibrava"), s.mine.map { it.species?.name })
+        assertTrue(SceneReading.looksLikeBattle(s))
+    }
+
     @Test fun overworldTextIsNoBattle() {
         val s = SceneReading.battle(listOf(line("Professor Rowan's lab", 0.1f, 0.3f, 0.9f, 0.36f)), gen4, ::nick, 0.76f)
         assertTrue(s.opp.isEmpty() && s.mine.isEmpty())
